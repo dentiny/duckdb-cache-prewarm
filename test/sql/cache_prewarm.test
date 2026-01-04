@@ -1,0 +1,23 @@
+# name: test/sql/cache_prewarm.test
+# description: test cache_prewarm extension
+# group: [sql]
+
+# Before we load the extension, this will fail
+statement error
+SELECT cache_prewarm('Sam');
+----
+Catalog Error: Scalar Function with name cache_prewarm does not exist!
+
+# Require statement will ensure this test is run with this extension loaded
+require cache_prewarm
+
+# Confirm the extension works
+query I
+SELECT cache_prewarm('Sam');
+----
+CachePrewarm Sam 🐥
+
+query I
+SELECT cache_prewarm_openssl_version('Michael') ILIKE 'CachePrewarm Michael, my linked OpenSSL version is OpenSSL%';
+----
+true
