@@ -98,12 +98,11 @@ void RegisterPrewarmFunction(ExtensionLoader &loader) {
 	// Register prewarm scalar function (supports optional mode and schema args)
 	ScalarFunctionSet prewarm_set("prewarm");
 	prewarm_set.AddFunction(ScalarFunction({LogicalType::VARCHAR}, LogicalType::BIGINT, PrewarmFunction));
-	prewarm_set.AddFunction(ScalarFunction({LogicalType::VARCHAR, LogicalType::VARCHAR}, LogicalType::BIGINT,
-	                                       PrewarmFunction));
+	prewarm_set.AddFunction(
+	    ScalarFunction({LogicalType::VARCHAR, LogicalType::VARCHAR}, LogicalType::BIGINT, PrewarmFunction));
 	prewarm_set.AddFunction(ScalarFunction({LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR},
 	                                       LogicalType::BIGINT, PrewarmFunction));
 	loader.RegisterFunction(prewarm_set);
 }
 
 } // namespace duckdb
-

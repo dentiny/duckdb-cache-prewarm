@@ -29,4 +29,3 @@ unordered_set<block_id_t> BlockCollector::CollectTableBlocks(DuckTableEntry &tab
 }
 
 } // namespace duckdb
-

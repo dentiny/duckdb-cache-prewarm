@@ -152,4 +152,3 @@ unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(PrewarmMode mode) {
 }
 
 } // namespace duckdb
-
