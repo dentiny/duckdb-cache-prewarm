@@ -20,7 +20,7 @@ Note: VCPKG is only required for extensions that want to rely on it for dependen
 ### Build steps
 Now to build the extension, run:
 ```sh
-make
+EXT_FLAGS="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache" GEN=ninja  make -j 30
 ```
 The main binaries that will be built are:
 ```sh
@@ -36,14 +36,48 @@ The main binaries that will be built are:
 To run the extension code, simply start the shell with `./build/release/duckdb`.
 
 Now we can use the features from the extension directly in DuckDB. The template contains a single scalar function `cache_prewarm()` that takes a string arguments and returns a string:
-```
-D select cache_prewarm('Jane') as result;
-┌───────────────┐
-│    result     │
-│    varchar    │
-├───────────────┤
-│ CachePrewarm Jane 🐥 │
-└───────────────┘
+```sql
+CREATE TABLE requests (
+      id           INTEGER PRIMARY KEY,
+      user_id      INTEGER NOT NULL,
+      path         VARCHAR NOT NULL,
+      status_code  INTEGER NOT NULL,
+      duration_ms  INTEGER,
+      created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert 1 million rows of data
+INSERT INTO requests (id, user_id, path, status_code, duration_ms, created_at)
+SELECT
+    i + 5 AS id, -- Start after your manual inserts
+    (random() * 500)::INTEGER AS user_id,
+    CASE
+        WHEN random() < 0.5 THEN '/api/items'
+        WHEN random() < 0.8 THEN '/api/items/' || (random() * 100)::INTEGER
+        ELSE '/api/search?q=query'
+    END AS path,
+    (ARRAY[200, 201, 404, 500])[1 + (random() * 3)::INTEGER] AS status_code,
+    (random() * 1000)::INTEGER AS duration_ms,
+    '2024-12-01 10:05:00'::TIMESTAMP + INTERVAL (i) SECOND AS created_at
+FROM range(1000000) t(i);
+
+-- Ensure the blocks are written to disk
+CHECKPOINT;
+┌─────────┐
+│ Success │
+│ boolean │
+├─────────┤
+│ 0 rows  │
+└─────────┘
+
+-- Prewarm the duckdb cache for the requests table
+SELECT prewarm('requests');
+┌─────────────────────┐
+│ prewarm('requests') │
+│        int64        │
+├─────────────────────┤
+│         24          │
+└─────────────────────┘
 ```
 
 ## Running the tests
@@ -100,3 +134,14 @@ To set up debugging in CLion, there are two simple steps required. Firstly, in `
 ```
 
 The second step is to configure the unittest runner as a run/debug configuration. To do this, go to `Run -> Edit Configurations` and click `+ -> Cmake Application`. The target and executable should be `unittest`. This will run all the DuckDB tests. To specify only running the extension specific tests, add `--test-dir ../../.. [sql]` to the `Program Arguments`. Note that it is recommended to use the `unittest` executable for testing/development within CLion. The actual DuckDB CLI currently does not reliably work as a run target in CLion.
+
+## TODO
+
+- [ ] Support prewarm with block id range
+- [ ] Support prewarm with index name
+- [ ] Table, Index Inspector to see which blocks is belong to which table or index
+- [ ] Autoprewarm, just like what PostgreSQL pg_prewarm extension does
+
+## References
+- [pg_prewarm extension](https://www.postgresql.org/docs/current/pgprewarm.html)
+- [pg_prewarm extension implementation](https://github.com/postgres/postgres/tree/master/contrib/pg_prewarm)
