@@ -16,12 +16,13 @@ idx_t BufferPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &tab
 
 	idx_t blocks_loaded = 0;
 	vector<shared_ptr<BlockHandle>> handles;
+	handles.reserve(block_ids.size());
 
 	// Register all blocks first
 	for (block_id_t block_id : block_ids) {
 		try {
 			auto handle = block_manager.RegisterBlock(block_id);
-			handles.push_back(handle);
+			handles.emplace_back(handle);
 		} catch (const Exception &e) {
 			// Block might not exist, skip it
 			continue;
@@ -113,12 +114,13 @@ idx_t PrefetchPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &t
 
 	idx_t blocks_prefetched = 0;
 	vector<shared_ptr<BlockHandle>> handles;
+	handles.reserve(block_ids.size());
 
 	// Register all blocks
 	for (block_id_t block_id : block_ids) {
 		try {
 			auto handle = block_manager.RegisterBlock(block_id);
-			handles.push_back(handle);
+			handles.emplace_back(handle);
 		} catch (const Exception &e) {
 			// Block might not exist, skip it
 			continue;

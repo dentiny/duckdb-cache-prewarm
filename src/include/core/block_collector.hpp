@@ -15,10 +15,6 @@ namespace duckdb {
 //! Collects block IDs from a table's column segments
 class BlockCollector {
 public:
-	//! Collect all block IDs from a table's ColumnSegmentInfo
-	//! Only includes persistent segments
-	static void CollectTableBlocks(DuckTableEntry &table_entry, unordered_set<block_id_t> &block_ids);
-
 	//! Collect block IDs from a table entry and return them
 	static unordered_set<block_id_t> CollectTableBlocks(DuckTableEntry &table_entry);
 };

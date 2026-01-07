@@ -4,8 +4,10 @@
 
 namespace duckdb {
 
-void BlockCollector::CollectTableBlocks(DuckTableEntry &table_entry, unordered_set<block_id_t> &block_ids) {
+unordered_set<block_id_t> BlockCollector::CollectTableBlocks(DuckTableEntry &table_entry) {
 	auto segment_infos = table_entry.GetColumnSegmentInfo();
+	unordered_set<block_id_t> block_ids;
+	block_ids.reserve(segment_infos.size() * 2);
 	for (const auto &segment_info : segment_infos) {
 		if (segment_info.persistent) {
 			// Add main block
@@ -20,11 +22,6 @@ void BlockCollector::CollectTableBlocks(DuckTableEntry &table_entry, unordered_s
 			}
 		}
 	}
-}
-
-unordered_set<block_id_t> BlockCollector::CollectTableBlocks(DuckTableEntry &table_entry) {
-	unordered_set<block_id_t> block_ids;
-	CollectTableBlocks(table_entry, block_ids);
 	return block_ids;
 }
 

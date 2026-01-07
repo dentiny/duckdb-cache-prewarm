@@ -26,9 +26,11 @@ static PrewarmMode ParsePrewarmMode(const Value &mode_val) {
 	auto lower_mode = StringUtil::Lower(mode_val.ToString());
 	if (lower_mode == "prefetch") {
 		return PrewarmMode::PREFETCH;
-	} else if (lower_mode == "read") {
+	}
+	if (lower_mode == "read") {
 		return PrewarmMode::READ;
-	} else if (lower_mode == "buffer") {
+	}
+	if (lower_mode == "buffer") {
 		return PrewarmMode::BUFFER;
 	}
 	throw InvalidInputException("Invalid prewarm mode '%s'. Valid modes are: 'prefetch', 'read', 'buffer'",
