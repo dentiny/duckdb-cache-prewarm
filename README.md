@@ -140,6 +140,8 @@ The second step is to configure the unittest runner as a run/debug configuration
 - [ ] Support prewarm with block id range
 - [ ] Support prewarm with index name
 - [ ] Table, Index Inspector to see which blocks is belong to which table or index
+- [ ] Prewarm remote tables and files and return numbers of bytes prewarmed instead of numbers of blocks cause remote stuffs don't go into buffer pool
+  - [ ] Try to leverage https://duckdb.org/community_extensions/extensions/cache_httpfs
 - [ ] Autoprewarm, just like what PostgreSQL pg_prewarm extension does
 
 ## References

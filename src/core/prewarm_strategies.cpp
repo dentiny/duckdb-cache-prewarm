@@ -20,13 +20,7 @@ idx_t BufferPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &tab
 
 	// Register all blocks first
 	for (block_id_t block_id : block_ids) {
-		try {
-			auto handle = block_manager.RegisterBlock(block_id);
-			handles.emplace_back(handle);
-		} catch (const Exception &e) {
-			// Block might not exist, skip it
-			continue;
-		}
+		handles.emplace_back(block_manager.RegisterBlock(block_id));
 	}
 
 	// Load blocks into buffer pool
@@ -37,8 +31,6 @@ idx_t BufferPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &tab
 			auto buffer_handle = buffer_manager.Pin(handle);
 			if (buffer_handle.IsValid()) {
 				blocks_loaded++;
-				// Unpin immediately - block is loaded but may be evicted if memory pressure
-				buffer_manager.Unpin(handle);
 			}
 		} catch (const Exception &e) {
 			// Failed to load block, continue with next
@@ -118,13 +110,7 @@ idx_t PrefetchPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &t
 
 	// Register all blocks
 	for (block_id_t block_id : block_ids) {
-		try {
-			auto handle = block_manager.RegisterBlock(block_id);
-			handles.emplace_back(handle);
-		} catch (const Exception &e) {
-			// Block might not exist, skip it
-			continue;
-		}
+		handles.emplace_back(block_manager.RegisterBlock(block_id));
 	}
 
 	// Prefetch blocks (hint OS to prefetch, non-blocking)

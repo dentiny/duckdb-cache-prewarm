@@ -20,6 +20,8 @@ public:
 
 	//! Execute prewarm operation on the given table and blocks
 	//! Returns number of blocks successfully prewarmed
+	//! If a provided block_id doesn't exist, it is silently skipped and not counted
+	//! in the return value. The method does not throw errors for non-existent blocks.
 	virtual idx_t Execute(ClientContext &context, DuckTableEntry &table_entry,
 	                      const unordered_set<block_id_t> &block_ids) = 0;
 };

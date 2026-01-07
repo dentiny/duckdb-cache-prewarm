@@ -6,9 +6,9 @@ namespace duckdb {
 
 //! Prewarm operation modes (matching PostgreSQL pg_prewarm)
 enum class PrewarmMode {
-	PREFETCH, // Hint OS to prefetch (non-blocking)
-	READ,     // Synchronously read into process memory (not buffer pool)
-	BUFFER    // Load into DuckDB buffer pool (default)
+	PREFETCH, // Load into DuckDB buffer pool via batched reads (blocks not pinned, may be evicted)
+	READ,     // Synchronously read from disk into temporary process memory (not buffer pool, buffer freed immediately)
+	BUFFER    // Load into DuckDB buffer pool and pin/unpin (default, blocks stay longer)
 };
 
 class CachePrewarmExtension : public Extension {

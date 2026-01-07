@@ -18,8 +18,10 @@ namespace duckdb {
 // Helper Functions
 //===--------------------------------------------------------------------===//
 
+namespace {
+
 //! Parse prewarm mode from value
-static PrewarmMode ParsePrewarmMode(const Value &mode_val) {
+PrewarmMode ParsePrewarmMode(const Value &mode_val) {
 	if (mode_val.IsNull()) {
 		return PrewarmMode::BUFFER;
 	}
@@ -36,6 +38,8 @@ static PrewarmMode ParsePrewarmMode(const Value &mode_val) {
 	throw InvalidInputException("Invalid prewarm mode '%s'. Valid modes are: 'prefetch', 'read', 'buffer'",
 	                            mode_val.ToString());
 }
+
+} // anonymous namespace
 
 //===--------------------------------------------------------------------===//
 // Prewarm Scalar Function Implementation
@@ -99,11 +103,15 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 void RegisterPrewarmFunction(ExtensionLoader &loader) {
 	// Register prewarm scalar function (supports optional mode and schema args)
 	ScalarFunctionSet prewarm_set("prewarm");
-	prewarm_set.AddFunction(ScalarFunction({LogicalType::VARCHAR}, LogicalType::BIGINT, PrewarmFunction));
+	prewarm_set.AddFunction(ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}},
+	                                       /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
 	prewarm_set.AddFunction(
-	    ScalarFunction({LogicalType::VARCHAR, LogicalType::VARCHAR}, LogicalType::BIGINT, PrewarmFunction));
-	prewarm_set.AddFunction(ScalarFunction({LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR},
-	                                       LogicalType::BIGINT, PrewarmFunction));
+	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::VARCHAR}},
+	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
+	prewarm_set.AddFunction(
+	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::VARCHAR},
+	                                   LogicalType {LogicalTypeId::VARCHAR}},
+	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
 	loader.RegisterFunction(prewarm_set);
 }
 
