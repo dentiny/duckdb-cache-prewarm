@@ -7,3 +7,6 @@ testext
 test/python/__pycache__/
 .Rhistory
 .vscode
+
+# Ignore readme for agents.
+AGENTs.md
