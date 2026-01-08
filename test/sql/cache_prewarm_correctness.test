@@ -1,0 +1,259 @@
+# name: test/sql/cache_prewarm_correctness.test
+# description: Verify that prewarm doesn't affect query results
+# group: [sql]
+
+require cache_prewarm
+
+# Load a persistent database file to ensure blocks are written to disk
+load __TEST_DIR__/cache_prewarm_correctness.db
+
+# Create a test table with various data types
+statement ok
+CREATE TABLE test_data (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    value DOUBLE,
+    active BOOLEAN,
+    created_at TIMESTAMP
+);
+
+# Insert test data
+statement ok
+INSERT INTO test_data VALUES
+    (1, 'Alice', 100.5, true, '2024-01-01 10:00:00'),
+    (2, 'Bob', 200.75, false, '2024-01-02 11:00:00'),
+    (3, 'Charlie', 150.25, true, '2024-01-03 12:00:00'),
+    (4, 'David', 300.00, true, '2024-01-04 13:00:00'),
+    (5, 'Eve', 250.50, false, '2024-01-05 14:00:00');
+
+# Create another table for join tests
+statement ok
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    amount DOUBLE,
+    order_date TIMESTAMP
+);
+
+statement ok
+INSERT INTO orders VALUES
+    (101, 1, 50.00, '2024-01-10 10:00:00'),
+    (102, 1, 75.25, '2024-01-11 11:00:00'),
+    (103, 2, 100.00, '2024-01-12 12:00:00'),
+    (104, 3, 200.50, '2024-01-13 13:00:00'),
+    (105, 3, 150.75, '2024-01-14 14:00:00'),
+    (106, 5, 300.00, '2024-01-15 15:00:00');
+
+# Checkpoint to ensure data is written to disk
+statement ok
+CHECKPOINT;
+
+# Test 1: Simple SELECT - capture results before prewarm
+query IITTT
+SELECT * FROM test_data ORDER BY id;
+----
+1	Alice	100.5	true	2024-01-01 10:00:00
+2	Bob	200.75	false	2024-01-02 11:00:00
+3	Charlie	150.25	true	2024-01-03 12:00:00
+4	David	300.0	true	2024-01-04 13:00:00
+5	Eve	250.5	false	2024-01-05 14:00:00
+
+# Test 2: Aggregation query before prewarm
+query IIIT
+SELECT
+    COUNT(*) as total_count,
+    COUNT(*) FILTER (WHERE active) as active_count,
+    SUM(value)::INTEGER as total_value,
+    MAX(name) as max_name
+FROM test_data;
+----
+5	3	1002	Eve
+
+# Test 3: Join query before prewarm
+query ITI
+SELECT
+    t.name,
+    o.order_id,
+    o.amount::INTEGER as amount
+FROM test_data t
+JOIN orders o ON t.id = o.user_id
+ORDER BY t.id, o.order_id;
+----
+Alice	101	50
+Alice	102	75
+Bob	103	100
+Charlie	104	200
+Charlie	105	151
+Eve	106	300
+
+# Test 4: Window function query before prewarm
+query ITI
+SELECT
+    name,
+    value::INTEGER as value,
+    ROW_NUMBER() OVER (ORDER BY value DESC) as rank
+FROM test_data
+ORDER BY rank;
+----
+David	300	1
+Eve	250	2
+Bob	201	3
+Charlie	150	4
+Alice	100	5
+
+# Prewarm both tables
+query I
+SELECT prewarm('test_data');
+----
+1
+
+query I
+SELECT prewarm('orders');
+----
+1
+
+# Test 1 (after prewarm): Verify simple SELECT returns same results
+query IITTT
+SELECT * FROM test_data ORDER BY id;
+----
+1	Alice	100.5	true	2024-01-01 10:00:00
+2	Bob	200.75	false	2024-01-02 11:00:00
+3	Charlie	150.25	true	2024-01-03 12:00:00
+4	David	300.0	true	2024-01-04 13:00:00
+5	Eve	250.5	false	2024-01-05 14:00:00
+
+# Test 2 (after prewarm): Verify aggregation returns same results
+query IIIT
+SELECT
+    COUNT(*) as total_count,
+    COUNT(*) FILTER (WHERE active) as active_count,
+    SUM(value)::INTEGER as total_value,
+    MAX(name) as max_name
+FROM test_data;
+----
+5	3	1002	Eve
+
+# Test 3 (after prewarm): Verify join returns same results
+query ITI
+SELECT
+    t.name,
+    o.order_id,
+    o.amount::INTEGER as amount
+FROM test_data t
+JOIN orders o ON t.id = o.user_id
+ORDER BY t.id, o.order_id;
+----
+Alice	101	50
+Alice	102	75
+Bob	103	100
+Charlie	104	200
+Charlie	105	151
+Eve	106	300
+
+# Test 4 (after prewarm): Verify window function returns same results
+query ITI
+SELECT
+    name,
+    value::INTEGER as value,
+    ROW_NUMBER() OVER (ORDER BY value DESC) as rank
+FROM test_data
+ORDER BY rank;
+----
+David	300	1
+Eve	250	2
+Bob	201	3
+Charlie	150	4
+Alice	100	5
+
+# Test 5: Verify UPDATE works correctly after prewarm
+statement ok
+UPDATE test_data SET value = 999.99 WHERE id = 1;
+
+query IT
+SELECT id, value FROM test_data WHERE id = 1;
+----
+1	999.99
+
+# Test 6: Verify DELETE works correctly after prewarm
+statement ok
+DELETE FROM orders WHERE order_id = 101;
+
+query I
+SELECT COUNT(*) FROM orders;
+----
+5
+
+# Test 7: Verify INSERT works correctly after prewarm
+statement ok
+INSERT INTO test_data VALUES (6, 'Frank', 400.0, true, '2024-01-06 15:00:00');
+
+query I
+SELECT COUNT(*) FROM test_data;
+----
+6
+
+query IT
+SELECT id, name FROM test_data WHERE id = 6;
+----
+6	Frank
+
+# Test 8: Prewarm again after modifications
+query I
+SELECT prewarm('test_data');
+----
+1
+
+# Verify data is still correct after second prewarm
+query I
+SELECT COUNT(*) FROM test_data;
+----
+6
+
+query IT
+SELECT id, name FROM test_data WHERE id = 6;
+----
+6	Frank
+
+# Test 9: Test with a larger dataset
+statement ok
+CREATE TABLE large_test (
+    id INTEGER PRIMARY KEY,
+    data VARCHAR
+);
+
+statement ok
+INSERT INTO large_test
+SELECT
+    i as id,
+    'data_' || i as data
+FROM range(10000) t(i);
+
+statement ok
+CHECKPOINT;
+
+# Count before prewarm
+query I
+SELECT COUNT(*) FROM large_test;
+----
+10000
+
+# Prewarm large table
+query I
+SELECT prewarm('large_test') > 0;
+----
+true
+
+# Count after prewarm - should be identical
+query I
+SELECT COUNT(*) FROM large_test;
+----
+10000
+
+# Verify specific rows
+query IT
+SELECT id, data FROM large_test WHERE id IN (0, 1000, 5000, 9999) ORDER BY id;
+----
+0	data_0
+1000	data_1000
+5000	data_5000
+9999	data_9999
