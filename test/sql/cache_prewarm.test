@@ -2,22 +2,42 @@
 # description: test cache_prewarm extension
 # group: [sql]
 
-# Before we load the extension, this will fail
-statement error
-SELECT cache_prewarm('Sam');
-----
-Catalog Error: Scalar Function with name cache_prewarm does not exist!
-
-# Require statement will ensure this test is run with this extension loaded
 require cache_prewarm
 
-# Confirm the extension works
-query I
-SELECT cache_prewarm('Sam');
-----
-CachePrewarm Sam 🐥
+# Load a persistent database file (not in-memory mode, otherwise all blocks won't be written to disk)
+load __TEST_DIR__/cache_prewarm.db
 
+statement ok
+CREATE TABLE requests (
+      id           INTEGER PRIMARY KEY,
+      user_id      INTEGER NOT NULL,
+      path         VARCHAR NOT NULL,
+      status_code  INTEGER NOT NULL,
+      duration_ms  INTEGER,
+      created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+statement ok
+INSERT INTO requests (id, user_id, path, status_code, duration_ms, created_at)
+SELECT
+    i + 5 AS id,
+    (random() * 500)::INTEGER AS user_id,
+    CASE
+        WHEN random() < 0.5 THEN '/api/items'
+        WHEN random() < 0.8 THEN '/api/items/' || (random() * 100)::INTEGER
+        ELSE '/api/search?q=query'
+    END AS path,
+    (ARRAY[200, 201, 404, 500])[1 + (random() * 3)::INTEGER] AS status_code,
+    (random() * 1000)::INTEGER AS duration_ms,
+    '2024-12-01 10:05:00'::TIMESTAMP + INTERVAL (i) SECOND AS created_at
+FROM range(1000000) t(i);
+
+# Ensure the blocks are written to disk
+statement ok
+CHECKPOINT;
+
+# Prewarm the duckdb cache for the requests table
 query I
-SELECT cache_prewarm_openssl_version('Michael') ILIKE 'CachePrewarm Michael, my linked OpenSSL version is OpenSSL%';
+SELECT prewarm('requests');
 ----
-true
+24
