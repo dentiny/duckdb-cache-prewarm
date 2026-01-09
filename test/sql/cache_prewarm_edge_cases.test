@@ -309,7 +309,7 @@ SELECT * FROM "MixedCase";
 ----
 1	test
 
-# Test 11: Prewarm a table where all columns use constant compression (no data blocks allocated) should return 0
+# Test 11: Prewarm a table where all column data is constant block (no data blocks allocated) should return 0
 # https://github.com/duckdb/duckdb/blob/d1dc88f950d456d72493df452dabdcd13aa413dd/src/storage/table/column_checkpoint_state.cpp#L136-L139
 # https://github.com/duckdb/duckdb/blob/d1dc88f950d456d72493df452dabdcd13aa413dd/src/storage/table/column_segment.cpp#L240-L248
 statement ok
