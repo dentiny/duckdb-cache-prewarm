@@ -24,6 +24,12 @@ public:
 	//! in the return value. The method does not throw errors for non-existent blocks.
 	virtual idx_t Execute(ClientContext &context, DuckTableEntry &table_entry,
 	                      const unordered_set<block_id_t> &block_ids) = 0;
+
+protected:
+	//! Check if direct I/O is enabled and throw an exception if OS page cache strategies won't work
+	//! @param context The client context to check
+	//! @param strategy_name The name of the strategy for error messaging
+	static void CheckDirectIO(ClientContext &context, const string &strategy_name);
 };
 
 //===--------------------------------------------------------------------===//

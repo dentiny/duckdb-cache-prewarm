@@ -6,6 +6,15 @@
 #include <algorithm>
 
 namespace duckdb {
+void PrewarmStrategy::CheckDirectIO(ClientContext &context, const string &strategy_name) {
+	if (context.db->config.options.use_direct_io) {
+		throw InvalidInputException(
+		    StringUtil::Format("%s prewarming strategy is not effective when direct I/O is enabled. "
+		                       "Direct I/O bypasses the OS page cache. "
+		                       "Use the BUFFER strategy instead to warm DuckDB's internal buffer pool.",
+		                       strategy_name));
+	}
+}
 
 idx_t BufferPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
                                      const unordered_set<block_id_t> &block_ids) {
@@ -42,6 +51,8 @@ idx_t BufferPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &tab
 
 idx_t ReadPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
                                    const unordered_set<block_id_t> &block_ids) {
+	CheckDirectIO(context, "READ");
+
 	auto &data_table = table_entry.GetStorage();
 	auto &table_io = TableIOManager::Get(data_table);
 	auto &block_manager = table_io.GetBlockManagerForRowData();
@@ -98,27 +109,8 @@ idx_t ReadPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table
 
 idx_t PrefetchPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
                                        const unordered_set<block_id_t> &block_ids) {
-	auto &data_table = table_entry.GetStorage();
-	auto &table_io = TableIOManager::Get(data_table);
-	auto &block_manager = table_io.GetBlockManagerForRowData();
-	auto &buffer_manager = BufferManager::GetBufferManager(context);
-
-	idx_t blocks_prefetched = 0;
-	vector<shared_ptr<BlockHandle>> handles;
-	handles.reserve(block_ids.size());
-
-	// Register all blocks
-	for (block_id_t block_id : block_ids) {
-		handles.emplace_back(block_manager.RegisterBlock(block_id));
-	}
-
-	// Prefetch blocks (hint OS to prefetch, non-blocking)
-	if (!handles.empty()) {
-		buffer_manager.Prefetch(handles);
-		blocks_prefetched = handles.size();
-	}
-
-	return blocks_prefetched;
+	// TODO: use fadvise for linux and fcntl with F_RDADVISE for macOS and BSD
+	throw NotImplementedException("PREFETCH prewarm strategy is not yet implemented");
 }
 
 //===--------------------------------------------------------------------===//
