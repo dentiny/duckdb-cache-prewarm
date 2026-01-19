@@ -14,31 +14,30 @@ idx_t BufferPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &tab
 	auto &block_manager = table_io.GetBlockManagerForRowData();
 	auto &buffer_manager = BufferManager::GetBufferManager(context);
 
-	idx_t blocks_loaded = 0;
+	idx_t blocks_loaded_before = 0;
 	vector<shared_ptr<BlockHandle>> handles;
 	handles.reserve(block_ids.size());
 
 	// Register all blocks first
 	for (block_id_t block_id : block_ids) {
-		handles.emplace_back(block_manager.RegisterBlock(block_id));
+		auto handle = block_manager.RegisterBlock(block_id);
+		if (handle->GetState() == BlockState::BLOCK_LOADED) {
+			blocks_loaded_before++;
+		}
+		handles.emplace_back(handle);
 	}
 
-	// Load blocks into buffer pool
-	// Use Pin for all blocks (can optimize later with BatchRead for sequential blocks)
+	// Prefetch all blocks (loads from disk if not already in buffer pool)
+	buffer_manager.Prefetch(handles);
+
+	idx_t blocks_loaded_after = 0;
 	for (auto &handle : handles) {
-		try {
-			// Pin the block - this loads it into the buffer pool
-			auto buffer_handle = buffer_manager.Pin(handle);
-			if (buffer_handle.IsValid()) {
-				blocks_loaded++;
-			}
-		} catch (const Exception &e) {
-			// Failed to load block, continue with next
-			continue;
+		if (handle->GetState() == BlockState::BLOCK_LOADED) {
+			blocks_loaded_after++;
 		}
 	}
 
-	return blocks_loaded;
+	return blocks_loaded_after - blocks_loaded_before;
 }
 
 idx_t ReadPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,

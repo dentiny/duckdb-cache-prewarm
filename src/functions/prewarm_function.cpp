@@ -76,9 +76,6 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	auto &default_db_name = db_manager.GetDefaultDatabase(context);
 	auto &catalog = Catalog::GetCatalog(context, default_db_name);
 	auto &table_catalog_entry = catalog.GetEntry<TableCatalogEntry>(context, schema, table_name);
-	if (!table_catalog_entry.IsDuckTable()) {
-		throw CatalogException("Table '%s.%s' is not a DuckTable", schema, table_name);
-	}
 	auto &duck_table = table_catalog_entry.Cast<DuckTableEntry>();
 
 	// Collect all blocks from the table using BlockCollector
