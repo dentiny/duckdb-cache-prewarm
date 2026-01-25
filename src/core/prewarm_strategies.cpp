@@ -27,26 +27,14 @@ idx_t BufferPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &tab
 	vector<shared_ptr<BlockHandle>> handles;
 	handles.reserve(block_ids.size());
 
-	// Register all blocks first
 	for (block_id_t block_id : block_ids) {
 		auto handle = block_manager.RegisterBlock(block_id);
-		if (handle->GetState() == BlockState::BLOCK_LOADED) {
-			blocks_loaded_before++;
-		}
 		handles.emplace_back(handle);
 	}
 
-	// Prefetch all blocks (loads from disk if not already in buffer pool)
 	buffer_manager.Prefetch(handles);
 
-	idx_t blocks_loaded_after = 0;
-	for (auto &handle : handles) {
-		if (handle->GetState() == BlockState::BLOCK_LOADED) {
-			blocks_loaded_after++;
-		}
-	}
-
-	return blocks_loaded_after - blocks_loaded_before;
+	return block_ids.size();
 }
 
 idx_t ReadPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
