@@ -2,8 +2,10 @@
 #include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/storage/data_table.hpp"
 #include "duckdb/storage/table_io_manager.hpp"
+#include "duckdb/storage/buffer/block_handle.hpp"
 #include "duckdb/common/exception.hpp"
 #include <algorithm>
+#include <cstdio>
 
 namespace duckdb {
 void PrewarmStrategy::CheckDirectIO(const string &strategy_name) {
@@ -17,24 +19,52 @@ void PrewarmStrategy::CheckDirectIO(const string &strategy_name) {
 }
 
 idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
+	vector<shared_ptr<BlockHandle>> all_handles;
+	all_handles.reserve(block_ids.size());
 	for (block_id_t block_id : block_ids) {
 		auto handle = block_manager.RegisterBlock(block_id);
-		handles.emplace_back(handle);
+		all_handles.emplace_back(handle);
 	}
 
-	buffer_manager.Prefetch(handles);
+	vector<shared_ptr<BlockHandle>> unloaded_handles;
+	for (const auto &handle : all_handles) {
+		if (handle->GetState() == BlockState::BLOCK_UNLOADED) {
+			unloaded_handles.emplace_back(handle);
+		}
+	}
 
-	return block_ids.size();
+	if (!unloaded_handles.empty()) {
+		auto block_size = block_manager.GetBlockAllocSize();
+		auto max_memory = buffer_manager.GetMaxMemory();
+		auto used_memory = buffer_manager.GetUsedMemory();
+		auto available_memory = max_memory > used_memory ? max_memory - used_memory : 0;
+
+		// Calculate maximum blocks we can load (use 80% of available to avoid eviction churn)
+		idx_t max_blocks = (available_memory * 4) / (block_size * 5);
+
+		if (unloaded_handles.size() > max_blocks) {
+			idx_t blocks_to_remove = unloaded_handles.size() - max_blocks;
+			unloaded_handles.resize(max_blocks);
+
+			fprintf(stderr,
+			    "WARNING: Buffer pool capacity limit reached. Only prewarming %llu out of %llu unloaded blocks. "
+			    "%llu blocks skipped. Available memory: %llu bytes, required: %llu bytes.\n",
+			    max_blocks,
+			    max_blocks + blocks_to_remove,
+			    blocks_to_remove,
+			    available_memory,
+			    (max_blocks + blocks_to_remove) * block_size);
+		}
+
+		buffer_manager.Prefetch(unloaded_handles);
+	}
+
+	// Return attempted to load blocks count
+	return all_handles.size();
 }
 
-idx_t ReadPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
-                                   const unordered_set<block_id_t> &block_ids) {
-	CheckDirectIO(context, "READ");
-
-	auto &data_table = table_entry.GetStorage();
-	auto &table_io = TableIOManager::Get(data_table);
-	auto &block_manager = table_io.GetBlockManagerForRowData();
-	auto &buffer_manager = BufferManager::GetBufferManager(context);
+idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
+	CheckDirectIO("READ");
 
 	idx_t blocks_read = 0;
 	auto block_size = block_manager.GetBlockAllocSize();
