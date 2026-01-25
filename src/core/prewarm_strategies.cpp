@@ -6,7 +6,7 @@
 #include <algorithm>
 
 namespace duckdb {
-void PrewarmStrategy::CheckDirectIO(ClientContext &context, const string &strategy_name) {
+void PrewarmStrategy::CheckDirectIO(const string &strategy_name) {
 	if (context.db->config.options.use_direct_io) {
 		throw InvalidInputException(
 		    StringUtil::Format("%s prewarming strategy is not effective when direct I/O is enabled. "
@@ -16,17 +16,7 @@ void PrewarmStrategy::CheckDirectIO(ClientContext &context, const string &strate
 	}
 }
 
-idx_t BufferPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
-                                     const unordered_set<block_id_t> &block_ids) {
-	auto &data_table = table_entry.GetStorage();
-	auto &table_io = TableIOManager::Get(data_table);
-	auto &block_manager = table_io.GetBlockManagerForRowData();
-	auto &buffer_manager = BufferManager::GetBufferManager(context);
-
-	idx_t blocks_loaded_before = 0;
-	vector<shared_ptr<BlockHandle>> handles;
-	handles.reserve(block_ids.size());
-
+idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
 	for (block_id_t block_id : block_ids) {
 		auto handle = block_manager.RegisterBlock(block_id);
 		handles.emplace_back(handle);
@@ -65,38 +55,20 @@ idx_t ReadPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table
 			block_count++;
 		}
 
-		try {
-			// Allocate temporary buffer for reading
-			auto total_size = block_count * block_size;
-			auto temp_buffer = buffer_manager.Allocate(MemoryTag::BASE_TABLE, total_size, true);
+		// Allocate temporary buffer for reading
+		auto total_size = block_count * block_size;
+		auto temp_buffer = buffer_manager.Allocate(MemoryTag::BASE_TABLE, total_size, true);
 
-			// Read blocks from storage
-			block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), first_block, block_count);
-			blocks_read += block_count;
-
-			// Buffer is automatically freed when temp_buffer goes out of scope
-		} catch (const Exception &e) {
-			// Failed to read, try individual blocks
-			for (idx_t j = 0; j < block_count; j++) {
-				try {
-					auto temp_buffer = buffer_manager.Allocate(MemoryTag::BASE_TABLE, block_size, true);
-					block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), sorted_blocks[i + j], 1);
-					blocks_read++;
-				} catch (const Exception &e2) {
-					// Skip this block
-					continue;
-				}
-			}
-		}
-
+		// Read blocks from storage
+		block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), first_block, block_count);
+		blocks_read += block_count;
 		i += block_count;
 	}
 
 	return blocks_read;
 }
 
-idx_t PrefetchPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
-                                       const unordered_set<block_id_t> &block_ids) {
+idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
 	// TODO: use fadvise for linux and fcntl with F_RDADVISE for macOS and BSD
 	throw NotImplementedException("PREFETCH prewarm strategy is not yet implemented");
 }
@@ -105,14 +77,15 @@ idx_t PrefetchPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &t
 // Strategy Factory
 //===--------------------------------------------------------------------===//
 
-unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(PrewarmMode mode) {
+unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(PrewarmMode mode, BlockManager &block_manager,
+                                                  BufferManager &buffer_manager, ClientContext &context) {
 	switch (mode) {
 	case PrewarmMode::BUFFER:
-		return make_uniq<BufferPrewarmStrategy>();
+		return make_uniq<BufferPrewarmStrategy>(block_manager, buffer_manager, context);
 	case PrewarmMode::READ:
-		return make_uniq<ReadPrewarmStrategy>();
+		return make_uniq<ReadPrewarmStrategy>(block_manager, buffer_manager, context);
 	case PrewarmMode::PREFETCH:
-		return make_uniq<PrefetchPrewarmStrategy>();
+		return make_uniq<PrefetchPrewarmStrategy>(block_manager, buffer_manager, context);
 	default:
 		throw InternalException("Unknown prewarm mode");
 	}
