@@ -90,8 +90,8 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	// Execute prewarm using the appropriate strategy
 	idx_t blocks_prewarmed = 0;
 	if (!block_ids.empty()) {
-		auto strategy = CreatePrewarmStrategy(mode, StorageManager::Get(*default_db).GetBlockManager(),
-		                                      BufferManager::GetBufferManager(context), context);
+		auto strategy = CreatePrewarmStrategy(context, mode, StorageManager::Get(*default_db).GetBlockManager(),
+		                                      BufferManager::GetBufferManager(context));
 		blocks_prewarmed = strategy->Execute(duck_table, block_ids);
 	}
 
