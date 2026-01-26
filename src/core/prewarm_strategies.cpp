@@ -11,7 +11,9 @@
 namespace duckdb {
 
 namespace {
-//! Maximum fraction of available buffer pool memory to use for prewarming
+//! Maximum fraction of available (unused) buffer pool memory to use for prewarming.
+//! Applied to remaining memory after subtracting already-loaded blocks (max_memory - used_memory).
+//! The 0.8 ratio leaves 20% headroom for concurrent operations and prevents buffer pool overload.
 constexpr double PREWARM_BUFFER_USAGE_RATIO = 0.8;
 } // namespace
 
