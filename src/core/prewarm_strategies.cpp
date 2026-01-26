@@ -49,7 +49,7 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 	all_handles.reserve(block_ids.size());
 	for (block_id_t block_id : block_ids) {
 		auto handle = block_manager.RegisterBlock(block_id);
-		all_handles.emplace_back(handle);
+		all_handles.emplace_back(std::move(handle));
 	}
 
 	vector<shared_ptr<BlockHandle>> unloaded_handles;
