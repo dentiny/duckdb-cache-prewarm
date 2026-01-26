@@ -1,5 +1,24 @@
 #!/bin/bash
 
+# Accept mode parameter (baseline, buffer, read, prefetch)
+MODE=${1:-baseline}
+
+# Validate mode
+case "$MODE" in
+    baseline|buffer|read|prefetch)
+        ;;
+    *)
+        echo "Usage: $0 [baseline|buffer|read|prefetch]"
+        echo "  baseline: No prewarm (default)"
+        echo "  buffer: Prewarm with 'buffer' mode"
+        echo "  read: Prewarm with 'read' mode"
+        echo "  prefetch: Prewarm with 'prefetch' mode"
+        exit 1
+        ;;
+esac
+
+echo "Running benchmark with mode: $MODE"
+
 # Load the data
 wget --continue --progress=dot:giga 'https://datasets.clickhouse.com/hits_compatible/hits.parquet' -o hits.parquet
 # or use the smaller dataset https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_1.parquet
@@ -12,9 +31,9 @@ else
     command time -f '%e' ../build/release/duckdb hits.db -storage_version latest -f create.sql -f load.sql
 fi
 
-# Run the queries
-
-./run.sh 2>&1 | tee log.txt
+# Run the queries with the unified script
+echo "Executing: ./run.sh $MODE"
+./run.sh "$MODE" 2>&1 | tee log.txt
 
 echo -n "Data size: "
 wc -c hits.db
