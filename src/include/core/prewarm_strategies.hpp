@@ -18,18 +18,24 @@ class PrewarmStrategy {
 public:
 	virtual ~PrewarmStrategy() = default;
 
+	PrewarmStrategy(BlockManager &block_manager, BufferManager &buffer_manager, ClientContext &context)
+	    : block_manager(block_manager), buffer_manager(buffer_manager), context(context) {
+	}
+
 	//! Execute prewarm operation on the given table and blocks
 	//! Returns number of blocks successfully prewarmed
 	//! If a provided block_id doesn't exist, it is silently skipped and not counted
 	//! in the return value. The method does not throw errors for non-existent blocks.
-	virtual idx_t Execute(ClientContext &context, DuckTableEntry &table_entry,
-	                      const unordered_set<block_id_t> &block_ids) = 0;
+	virtual idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) = 0;
 
 protected:
 	//! Check if direct I/O is enabled and throw an exception if OS page cache strategies won't work
-	//! @param context The client context to check
 	//! @param strategy_name The name of the strategy for error messaging
-	static void CheckDirectIO(ClientContext &context, const string &strategy_name);
+	void CheckDirectIO(const string &strategy_name);
+
+	BlockManager &block_manager;
+	BufferManager &buffer_manager;
+	ClientContext &context;
 };
 
 //===--------------------------------------------------------------------===//
@@ -39,22 +45,31 @@ protected:
 //! Prewarm strategy: Load blocks into buffer pool
 class BufferPrewarmStrategy : public PrewarmStrategy {
 public:
-	idx_t Execute(ClientContext &context, DuckTableEntry &table_entry,
-	              const unordered_set<block_id_t> &block_ids) override;
+	BufferPrewarmStrategy(BlockManager &block_manager, BufferManager &buffer_manager, ClientContext &context)
+	    : PrewarmStrategy(block_manager, buffer_manager, context) {
+	}
+
+	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) override;
 };
 
 //! Prewarm strategy: Read blocks directly from storage (not into buffer pool)
 class ReadPrewarmStrategy : public PrewarmStrategy {
 public:
-	idx_t Execute(ClientContext &context, DuckTableEntry &table_entry,
-	              const unordered_set<block_id_t> &block_ids) override;
+	ReadPrewarmStrategy(BlockManager &block_manager, BufferManager &buffer_manager, ClientContext &context)
+	    : PrewarmStrategy(block_manager, buffer_manager, context) {
+	}
+
+	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) override;
 };
 
 //! Prewarm strategy: Hint OS to prefetch blocks (non-blocking)
 class PrefetchPrewarmStrategy : public PrewarmStrategy {
 public:
-	idx_t Execute(ClientContext &context, DuckTableEntry &table_entry,
-	              const unordered_set<block_id_t> &block_ids) override;
+	PrefetchPrewarmStrategy(BlockManager &block_manager, BufferManager &buffer_manager, ClientContext &context)
+	    : PrewarmStrategy(block_manager, buffer_manager, context) {
+	}
+
+	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) override;
 };
 
 //===--------------------------------------------------------------------===//
@@ -62,6 +77,7 @@ public:
 //===--------------------------------------------------------------------===//
 
 //! Create a prewarm strategy based on mode
-unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(PrewarmMode mode);
+unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(PrewarmMode mode, BlockManager &block_manager,
+                                                  BufferManager &buffer_manager, ClientContext &context);
 
 } // namespace duckdb
