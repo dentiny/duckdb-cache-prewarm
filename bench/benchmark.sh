@@ -20,7 +20,7 @@ esac
 echo "Running benchmark with mode: $MODE"
 
 # Load the data
-wget --continue --progress=dot:giga 'https://datasets.clickhouse.com/hits_compatible/hits.parquet' -o hits.parquet
+wget --continue --progress=dot:giga 'https://datasets.clickhouse.com/hits_compatible/hits.parquet' -O hits.parquet
 # or use the smaller dataset https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_1.parquet
 
 echo -n "Load time: "
