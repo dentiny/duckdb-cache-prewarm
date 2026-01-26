@@ -1,10 +1,16 @@
 #include "core/prewarm_strategies.hpp"
+#include "core/os_prefetch.hpp"
 
 #include "duckdb/storage/buffer/block_handle.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/storage/data_table.hpp"
 #include "duckdb/storage/table_io_manager.hpp"
+#include "duckdb/storage/single_file_block_manager.hpp"
+#include "duckdb/storage/storage_manager.hpp"
+#include "duckdb/storage/storage_info.hpp"
+#include "duckdb/catalog/catalog.hpp"
 #include "duckdb/common/exception.hpp"
+#include "duckdb/common/file_system.hpp"
 #include "duckdb/logging/logger.hpp"
 #include <algorithm>
 
@@ -36,7 +42,6 @@ BufferCapacityInfo PrewarmStrategy::CalculateMaxAvailableBlocks() {
 
 	// It is possible due to concurrent access for buffer pool
 	D_ASSERT(info.used_memory <= info.max_memory);
-
 
 	// Calculate maximum blocks we can load
 	info.max_blocks = static_cast<idx_t>((static_cast<double>(info.available_memory) * PREWARM_BUFFER_USAGE_RATIO) /
@@ -135,8 +140,38 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 }
 
 idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
-	// TODO: use fadvise for linux and fcntl with F_RDADVISE for macOS and BSD
-	throw NotImplementedException("PREFETCH prewarm strategy is not yet implemented");
+	CheckDirectIO("PREFETCH");
+
+	// Try to cast to SingleFileBlockManager
+	auto *single_file_manager = dynamic_cast<SingleFileBlockManager *>(&block_manager);
+	if (!single_file_manager) {
+		// Not a file-based block manager (e.g., in-memory), fall back to READ strategy
+		DUCKDB_LOG_WARN(context, "PREFETCH strategy requires file-based storage, falling back to READ strategy");
+		ReadPrewarmStrategy read_strategy(context, block_manager, buffer_manager);
+		return read_strategy.Execute(table_entry, block_ids);
+	}
+
+	auto block_size = block_manager.GetBlockAllocSize();
+
+	// Sort block IDs for sequential prefetch hints
+	vector<block_id_t> sorted_blocks(block_ids.begin(), block_ids.end());
+	std::sort(sorted_blocks.begin(), sorted_blocks.end());
+
+#ifndef _WIN32
+	// Get the database file path from the storage manager
+	auto &catalog = table_entry.ParentCatalog();
+	auto &storage_manager = StorageManager::Get(catalog);
+	string db_path = storage_manager.GetDBPath();
+
+	idx_t blocks_prefetched = OSPrefetchBlocks(db_path, sorted_blocks, block_size);
+
+	return blocks_prefetched;
+
+#else
+	// Non-Unix platforms not supported
+	throw NotImplementedException(
+	    "PREFETCH prewarm strategy is only supported on Unix-like systems (Linux, macOS, BSD)");
+#endif
 }
 
 //===--------------------------------------------------------------------===//
