@@ -1,55 +1,107 @@
 #include "core/prewarm_strategies.hpp"
+
+#include "duckdb/storage/buffer/block_handle.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/storage/data_table.hpp"
 #include "duckdb/storage/table_io_manager.hpp"
 #include "duckdb/common/exception.hpp"
+#include "duckdb/logging/logger.hpp"
 #include <algorithm>
 
 namespace duckdb {
 
-idx_t BufferPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
-                                     const unordered_set<block_id_t> &block_ids) {
-	auto &data_table = table_entry.GetStorage();
-	auto &table_io = TableIOManager::Get(data_table);
-	auto &block_manager = table_io.GetBlockManagerForRowData();
-	auto &buffer_manager = BufferManager::GetBufferManager(context);
+namespace {
+//! Maximum fraction of available (unused) buffer pool memory to use for prewarming.
+//! Applied to remaining memory after subtracting current buffer pool usage (max_memory - used_memory).
+//! The 0.8 ratio leaves 20% headroom for concurrent operations and prevents buffer pool overload.
+//! The 0.8 ratio leaves 20% headroom for concurrent operations and prevents buffer pool overload.
+constexpr double PREWARM_BUFFER_USAGE_RATIO = 0.8;
+} // namespace
 
-	idx_t blocks_loaded = 0;
-	vector<shared_ptr<BlockHandle>> handles;
-	handles.reserve(block_ids.size());
+void PrewarmStrategy::CheckDirectIO(const string &strategy_name) {
+	if (context.db->config.options.use_direct_io) {
+		throw InvalidInputException("%s prewarming strategy is not effective when direct I/O is enabled. "
+		                            "Direct I/O bypasses the OS page cache. "
+		                            "Use the BUFFER strategy instead to warm DuckDB's internal buffer pool.",
+		                            strategy_name);
+	}
+}
 
-	// Register all blocks first
+BufferCapacityInfo PrewarmStrategy::CalculateMaxAvailableBlocks() {
+	BufferCapacityInfo info;
+	info.block_size = block_manager.GetBlockAllocSize();
+	info.max_memory = buffer_manager.GetMaxMemory();
+	info.used_memory = buffer_manager.GetUsedMemory();
+	info.available_memory = info.max_memory > info.used_memory ? info.max_memory - info.used_memory : 0;
+
+	// It is possible due to concurrent access for buffer pool
+	D_ASSERT(info.used_memory <= info.max_memory);
+
+
+	// Calculate maximum blocks we can load
+	info.max_blocks = static_cast<idx_t>((static_cast<double>(info.available_memory) * PREWARM_BUFFER_USAGE_RATIO) /
+	                                     static_cast<double>(info.block_size));
+
+	return info;
+}
+
+idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
+	vector<shared_ptr<BlockHandle>> all_handles;
+	all_handles.reserve(block_ids.size());
 	for (block_id_t block_id : block_ids) {
-		handles.emplace_back(block_manager.RegisterBlock(block_id));
+		auto handle = block_manager.RegisterBlock(block_id);
+		all_handles.emplace_back(std::move(handle));
 	}
 
-	// Load blocks into buffer pool
-	// Use Pin for all blocks (can optimize later with BatchRead for sequential blocks)
-	for (auto &handle : handles) {
-		try {
-			// Pin the block - this loads it into the buffer pool
-			auto buffer_handle = buffer_manager.Pin(handle);
-			if (buffer_handle.IsValid()) {
-				blocks_loaded++;
-			}
-		} catch (const Exception &e) {
-			// Failed to load block, continue with next
-			continue;
+	vector<shared_ptr<BlockHandle>> unloaded_handles;
+	for (auto &handle : all_handles) {
+		if (handle->GetState() == BlockState::BLOCK_UNLOADED) {
+			unloaded_handles.emplace_back(std::move(handle));
 		}
 	}
 
-	return blocks_loaded;
+	if (unloaded_handles.empty()) {
+		return unloaded_handles.size();
+	}
+
+	auto capacity_info = CalculateMaxAvailableBlocks();
+
+	idx_t total_blocks = all_handles.size();
+	idx_t already_cached = all_handles.size() - unloaded_handles.size();
+	idx_t blocks_to_prewarm = unloaded_handles.size();
+
+	if (unloaded_handles.size() > capacity_info.max_blocks) {
+		idx_t blocks_skipped = unloaded_handles.size() - capacity_info.max_blocks;
+		unloaded_handles.resize(capacity_info.max_blocks);
+
+		DUCKDB_LOG_WARN(context,
+		                "Buffer pool capacity limit reached.\n"
+		                "  Table blocks: %llu total (%llu already cached, %llu unloaded)\n"
+		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"
+		                "  Memory: %llu bytes available, %llu bytes required for all unloaded blocks",
+		                total_blocks, already_cached, blocks_to_prewarm, capacity_info.max_blocks, blocks_skipped,
+		                capacity_info.available_memory, blocks_to_prewarm * capacity_info.block_size);
+	}
+
+	buffer_manager.Prefetch(unloaded_handles);
+
+	// Return attempted to load blocks count
+	return all_handles.size();
 }
 
-idx_t ReadPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
-                                   const unordered_set<block_id_t> &block_ids) {
-	auto &data_table = table_entry.GetStorage();
-	auto &table_io = TableIOManager::Get(data_table);
-	auto &block_manager = table_io.GetBlockManagerForRowData();
-	auto &buffer_manager = BufferManager::GetBufferManager(context);
+idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
+	CheckDirectIO("READ");
 
 	idx_t blocks_read = 0;
 	auto block_size = block_manager.GetBlockAllocSize();
+
+	auto capacity_info = CalculateMaxAvailableBlocks();
+	idx_t max_batch_size = capacity_info.max_blocks;
+	if (max_batch_size == 0) {
+		DUCKDB_LOG_WARN(context, "Insufficient memory to prewarm any blocks (available: %llu bytes, block size: %llu bytes)",
+		                capacity_info.available_memory, capacity_info.block_size);
+		return 0;
+	}
 
 	// Sort block IDs for sequential reading
 	vector<block_id_t> sorted_blocks(block_ids.begin(), block_ids.end());
@@ -61,79 +113,45 @@ idx_t ReadPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table
 		block_id_t last_block = first_block;
 		idx_t block_count = 1;
 
-		// Find consecutive blocks
-		while (i + block_count < sorted_blocks.size() && sorted_blocks[i + block_count] == first_block + block_count) {
+		// Find consecutive blocks and limit the batch size to prevent memory overflow
+		while (i + block_count < sorted_blocks.size() &&
+		       sorted_blocks[i + block_count] == first_block + block_count &&
+		       block_count < max_batch_size) {
 			last_block = sorted_blocks[i + block_count];
 			block_count++;
 		}
 
-		try {
-			// Allocate temporary buffer for reading
-			auto total_size = block_count * block_size;
-			auto temp_buffer = buffer_manager.Allocate(MemoryTag::BASE_TABLE, total_size, true);
+		// Allocate temporary buffer for reading
+		auto total_size = block_count * block_size;
+		auto temp_buffer = buffer_manager.Allocate(MemoryTag::BASE_TABLE, total_size, true);
 
-			// Read blocks from storage
-			block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), first_block, block_count);
-			blocks_read += block_count;
-
-			// Buffer is automatically freed when temp_buffer goes out of scope
-		} catch (const Exception &e) {
-			// Failed to read, try individual blocks
-			for (idx_t j = 0; j < block_count; j++) {
-				try {
-					auto temp_buffer = buffer_manager.Allocate(MemoryTag::BASE_TABLE, block_size, true);
-					block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), sorted_blocks[i + j], 1);
-					blocks_read++;
-				} catch (const Exception &e2) {
-					// Skip this block
-					continue;
-				}
-			}
-		}
-
+		// Read blocks from storage
+		block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), first_block, block_count);
+		blocks_read += block_count;
 		i += block_count;
 	}
 
 	return blocks_read;
 }
 
-idx_t PrefetchPrewarmStrategy::Execute(ClientContext &context, DuckTableEntry &table_entry,
-                                       const unordered_set<block_id_t> &block_ids) {
-	auto &data_table = table_entry.GetStorage();
-	auto &table_io = TableIOManager::Get(data_table);
-	auto &block_manager = table_io.GetBlockManagerForRowData();
-	auto &buffer_manager = BufferManager::GetBufferManager(context);
-
-	idx_t blocks_prefetched = 0;
-	vector<shared_ptr<BlockHandle>> handles;
-	handles.reserve(block_ids.size());
-
-	// Register all blocks
-	for (block_id_t block_id : block_ids) {
-		handles.emplace_back(block_manager.RegisterBlock(block_id));
-	}
-
-	// Prefetch blocks (hint OS to prefetch, non-blocking)
-	if (!handles.empty()) {
-		buffer_manager.Prefetch(handles);
-		blocks_prefetched = handles.size();
-	}
-
-	return blocks_prefetched;
+idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
+	// TODO: use fadvise for linux and fcntl with F_RDADVISE for macOS and BSD
+	throw NotImplementedException("PREFETCH prewarm strategy is not yet implemented");
 }
 
 //===--------------------------------------------------------------------===//
 // Strategy Factory
 //===--------------------------------------------------------------------===//
 
-unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(PrewarmMode mode) {
+unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(ClientContext &context, PrewarmMode mode, BlockManager &block_manager,
+                                                  BufferManager &buffer_manager) {
 	switch (mode) {
 	case PrewarmMode::BUFFER:
-		return make_uniq<BufferPrewarmStrategy>();
+		return make_uniq<BufferPrewarmStrategy>(context, block_manager, buffer_manager);
 	case PrewarmMode::READ:
-		return make_uniq<ReadPrewarmStrategy>();
+		return make_uniq<ReadPrewarmStrategy>(context, block_manager, buffer_manager);
 	case PrewarmMode::PREFETCH:
-		return make_uniq<PrefetchPrewarmStrategy>();
+		return make_uniq<PrefetchPrewarmStrategy>(context, block_manager, buffer_manager);
 	default:
 		throw InternalException("Unknown prewarm mode");
 	}

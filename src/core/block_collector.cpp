@@ -5,6 +5,10 @@
 namespace duckdb {
 
 unordered_set<block_id_t> BlockCollector::CollectTableBlocks(DuckTableEntry &table_entry) {
+	// TODO: GetColumnSegmentInfo() will load some blocks for this table into memory as a side effect
+	// This is because string columns and other compression types need to read
+	// block headers to get dictionary/metadata information.
+	// Need to figure out a way to avoid this side effect.
 	auto segment_infos = table_entry.GetColumnSegmentInfo();
 	unordered_set<block_id_t> block_ids;
 	block_ids.reserve(segment_infos.size() * 2);

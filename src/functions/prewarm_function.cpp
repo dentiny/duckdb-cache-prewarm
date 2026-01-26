@@ -5,12 +5,17 @@
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/common/exception.hpp"
+#include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/common/unordered_set.hpp"
 #include "duckdb/function/scalar_function.hpp"
+#include "duckdb/main/attached_database.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/database_manager.hpp"
+#include "duckdb/storage/buffer_manager.hpp"
+#include "duckdb/storage/data_table.hpp"
+#include "duckdb/storage/storage_manager.hpp"
 
 namespace duckdb {
 
@@ -74,11 +79,9 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	// Resolve against the catalog of the current default database
 	auto &db_manager = DatabaseManager::Get(DatabaseInstance::GetDatabase(context));
 	auto &default_db_name = db_manager.GetDefaultDatabase(context);
-	auto &catalog = Catalog::GetCatalog(context, default_db_name);
+	shared_ptr<AttachedDatabase> default_db = db_manager.GetDatabase(default_db_name);
+	auto &catalog = default_db->GetCatalog();
 	auto &table_catalog_entry = catalog.GetEntry<TableCatalogEntry>(context, schema, table_name);
-	if (!table_catalog_entry.IsDuckTable()) {
-		throw CatalogException("Table '%s.%s' is not a DuckTable", schema, table_name);
-	}
 	auto &duck_table = table_catalog_entry.Cast<DuckTableEntry>();
 
 	// Collect all blocks from the table using BlockCollector
@@ -87,8 +90,9 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	// Execute prewarm using the appropriate strategy
 	idx_t blocks_prewarmed = 0;
 	if (!block_ids.empty()) {
-		auto strategy = CreatePrewarmStrategy(mode);
-		blocks_prewarmed = strategy->Execute(context, duck_table, block_ids);
+		auto strategy = CreatePrewarmStrategy(context, mode, StorageManager::Get(*default_db).GetBlockManager(),
+		                                      BufferManager::GetBufferManager(context));
+		blocks_prewarmed = strategy->Execute(duck_table, block_ids);
 	}
 
 	result.SetVectorType(VectorType::CONSTANT_VECTOR);
