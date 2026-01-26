@@ -1,25 +1,26 @@
 #include "core/prewarm_strategies.hpp"
+
 #include "duckdb/storage/buffer/block_handle.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/storage/data_table.hpp"
 #include "duckdb/storage/table_io_manager.hpp"
 #include "duckdb/common/exception.hpp"
-#include "duckdb/common/string_util.hpp"
 #include "duckdb/logging/logger.hpp"
 #include <algorithm>
 
 namespace duckdb {
 
+namespace {
 //! Maximum fraction of available buffer pool memory to use for prewarming
-static constexpr double PREWARM_BUFFER_USAGE_RATIO = 0.8;
+constexpr double PREWARM_BUFFER_USAGE_RATIO = 0.8;
+} // namespace
 
 void PrewarmStrategy::CheckDirectIO(const string &strategy_name) {
 	if (context.db->config.options.use_direct_io) {
-		throw InvalidInputException(
-		    StringUtil::Format("%s prewarming strategy is not effective when direct I/O is enabled. "
-		                       "Direct I/O bypasses the OS page cache. "
-		                       "Use the BUFFER strategy instead to warm DuckDB's internal buffer pool.",
-		                       strategy_name));
+		throw InvalidInputException("%s prewarming strategy is not effective when direct I/O is enabled. "
+		                            "Direct I/O bypasses the OS page cache. "
+		                            "Use the BUFFER strategy instead to warm DuckDB's internal buffer pool.",
+		                            strategy_name);
 	}
 }
 
@@ -29,6 +30,10 @@ BufferCapacityInfo PrewarmStrategy::CalculateMaxAvailableBlocks() {
 	info.max_memory = buffer_manager.GetMaxMemory();
 	info.used_memory = buffer_manager.GetUsedMemory();
 	info.available_memory = info.max_memory > info.used_memory ? info.max_memory - info.used_memory : 0;
+
+	// It is possible due to concurrent access for buffer pool
+	D_ASSERT(info.used_memory <= info.max_memory);
+
 
 	// Calculate maximum blocks we can load
 	info.max_blocks = static_cast<idx_t>((static_cast<double>(info.available_memory) * PREWARM_BUFFER_USAGE_RATIO) /
@@ -139,11 +144,11 @@ unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(ClientContext &context, Prewar
                                                   BufferManager &buffer_manager) {
 	switch (mode) {
 	case PrewarmMode::BUFFER:
-		return make_uniq<BufferPrewarmStrategy>(block_manager, buffer_manager, context);
+		return make_uniq<BufferPrewarmStrategy>(context, block_manager, buffer_manager);
 	case PrewarmMode::READ:
-		return make_uniq<ReadPrewarmStrategy>(block_manager, buffer_manager, context);
+		return make_uniq<ReadPrewarmStrategy>(context, block_manager, buffer_manager);
 	case PrewarmMode::PREFETCH:
-		return make_uniq<PrefetchPrewarmStrategy>(block_manager, buffer_manager, context);
+		return make_uniq<PrefetchPrewarmStrategy>(context, block_manager, buffer_manager);
 	default:
 		throw InternalException("Unknown prewarm mode");
 	}
