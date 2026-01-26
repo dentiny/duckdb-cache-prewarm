@@ -7,6 +7,7 @@
 #include "duckdb/common/exception.hpp"
 #include "duckdb/logging/logger.hpp"
 #include <algorithm>
+#include <climits>
 
 namespace duckdb {
 
@@ -116,7 +117,8 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 		// Find consecutive blocks and limit the batch size to prevent memory overflow
 		while (i + block_count < sorted_blocks.size() &&
 		       sorted_blocks[i + block_count] == first_block + block_count &&
-		       block_count < max_batch_size) {
+		       block_count < max_batch_size &&
+			(block_count + 1) * block_size <= INT_MAX) {
 			last_block = sorted_blocks[i + block_count];
 			block_count++;
 		}
