@@ -4,9 +4,9 @@ This repository is based on https://github.com/duckdb/extension-template, check 
 
 ---
 
-This extension, CachePrewarm, allow you to prewarm the cache of a table by loading the data blocks into the buffer pool.
+This extension, CachePrewarm, allows you to prewarm the cache of a table by loading the data blocks into the buffer pool.
 
-Now we can use the features from the extension directly in DuckDB. The template contains a single scalar function `cache_prewarm()` that takes a string arguments and returns a string:
+Now we can use the features from the extension directly in DuckDB. The extension exposes a scalar function `prewarm(table_name [, mode])` that takes a table name (and optional mode) as a string argument and returns an integer block count:
 ```sql
 CREATE TABLE events (
     event_id BIGINT,
