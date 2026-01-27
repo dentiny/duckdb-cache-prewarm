@@ -7,28 +7,15 @@
 namespace duckdb {
 
 idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
-	vector<shared_ptr<BlockHandle>> all_handles;
-	all_handles.reserve(block_ids.size());
-	for (block_id_t block_id : block_ids) {
-		auto handle = block_manager.RegisterBlock(block_id);
-		all_handles.emplace_back(std::move(handle));
-	}
-
-	vector<shared_ptr<BlockHandle>> unloaded_handles;
-	for (auto &handle : all_handles) {
-		if (handle->GetState() == BlockState::BLOCK_UNLOADED) {
-			unloaded_handles.emplace_back(std::move(handle));
-		}
-	}
-
+	auto unloaded_handles = GetUnloadedBlockHandles(block_ids);
 	if (unloaded_handles.empty()) {
-		return unloaded_handles.size();
+		return 0;
 	}
 
 	auto capacity_info = CalculateMaxAvailableBlocks();
 
-	idx_t total_blocks = all_handles.size();
-	idx_t already_cached = all_handles.size() - unloaded_handles.size();
+	idx_t total_blocks = block_ids.size();
+	idx_t already_cached = total_blocks - unloaded_handles.size();
 	idx_t blocks_to_prewarm = unloaded_handles.size();
 
 	if (unloaded_handles.size() > capacity_info.max_blocks) {
@@ -46,8 +33,14 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 
 	buffer_manager.Prefetch(unloaded_handles);
 
-	// Return attempted to load blocks count
-	return all_handles.size();
+	idx_t blocks_loaded = 0;
+	for (auto &handle : unloaded_handles) {
+		if (handle->GetState() == BlockState::BLOCK_LOADED) {
+			blocks_loaded++;
+		}
+	}
+
+	return blocks_loaded;
 }
 
 } // namespace duckdb

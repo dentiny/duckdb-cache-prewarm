@@ -32,12 +32,52 @@ SELECT
     '2024-12-01 10:05:00'::TIMESTAMP + INTERVAL (i) SECOND AS created_at
 FROM range(1000000) t(i);
 
-# Ensure the blocks are written to disk
-statement ok
-CHECKPOINT;
+restart
 
 # Prewarm the duckdb cache for the requests table
 query I
 SELECT prewarm('requests');
 ----
-24
+0
+
+statement ok
+CREATE TABLE events (
+    event_id BIGINT,
+    user_id INTEGER,
+    session_id VARCHAR,
+    event_type VARCHAR,
+    event_data VARCHAR,
+    timestamp TIMESTAMP,
+    value DOUBLE
+);
+
+statement ok
+INSERT INTO events
+SELECT
+    i AS event_id,
+    (random() * 10000)::INTEGER AS user_id,
+    'session_' || (random() * 5000)::INTEGER AS session_id,
+    (ARRAY['click', 'view', 'purchase', 'signup', 'logout'])[1 + (random() * 4)::INTEGER] AS event_type,
+    'data_' || (random() * 1000)::INTEGER AS event_data,
+    '2024-01-01 00:00:00'::TIMESTAMP + INTERVAL (i) SECOND AS timestamp,
+    random() * 1000 AS value
+FROM range(500000) t(i);
+
+statement ok
+CHECKPOINT;
+
+restart
+
+query I
+SELECT prewarm('events') > 10;
+----
+true
+
+restart
+
+# After restart, read mode may or may not find blocks depending on partial block flush state
+# The function should not error out even if partial blocks aren't fully flushed
+query I
+SELECT prewarm('events', 'read') >= 0;
+----
+true

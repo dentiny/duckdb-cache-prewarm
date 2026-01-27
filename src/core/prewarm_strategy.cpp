@@ -1,6 +1,7 @@
 #include "core/prewarm_strategy.hpp"
 
 #include "duckdb/common/exception.hpp"
+#include "duckdb/storage/buffer/block_handle.hpp"
 
 namespace duckdb {
 
@@ -36,6 +37,19 @@ BufferCapacityInfo PrewarmStrategy::CalculateMaxAvailableBlocks() {
 	                                     static_cast<double>(info.block_size));
 
 	return info;
+}
+
+vector<shared_ptr<BlockHandle>> PrewarmStrategy::GetUnloadedBlockHandles(const unordered_set<block_id_t> &block_ids) {
+	vector<shared_ptr<BlockHandle>> unloaded_handles;
+	unloaded_handles.reserve(block_ids.size());
+	for (block_id_t block_id : block_ids) {
+		auto handle = block_manager.RegisterBlock(block_id);
+		if (handle->GetState() == BlockState::BLOCK_UNLOADED) {
+			unloaded_handles.emplace_back(std::move(handle));
+		}
+	}
+
+	return unloaded_handles;
 }
 
 } // namespace duckdb
