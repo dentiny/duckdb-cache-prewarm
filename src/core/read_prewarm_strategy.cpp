@@ -1,7 +1,6 @@
 #include "core/read_prewarm_strategy.hpp"
 
 #include "duckdb/common/exception.hpp"
-#include "duckdb/common/numeric_utils.hpp"
 #include "duckdb/storage/buffer/block_handle.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/logging/logger.hpp"
