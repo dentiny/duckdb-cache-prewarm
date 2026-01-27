@@ -1,0 +1,41 @@
+#include "core/prewarm_strategy.hpp"
+
+#include "duckdb/common/exception.hpp"
+
+namespace duckdb {
+
+namespace {
+//! Maximum fraction of available (unused) buffer pool memory to use for prewarming.
+//! Applied to remaining memory after subtracting current buffer pool usage (max_memory - used_memory).
+//! The 0.8 ratio leaves 20% headroom for concurrent operations and prevents buffer pool overload.
+//! The 0.8 ratio leaves 20% headroom for concurrent operations and prevents buffer pool overload.
+constexpr double PREWARM_BUFFER_USAGE_RATIO = 0.8;
+} // namespace
+
+void PrewarmStrategy::CheckDirectIO(const string &strategy_name) {
+	if (context.db->config.options.use_direct_io) {
+		throw InvalidInputException("%s prewarming strategy is not effective when direct I/O is enabled. "
+		                            "Direct I/O bypasses the OS page cache. "
+		                            "Use the BUFFER strategy instead to warm DuckDB's internal buffer pool.",
+		                            strategy_name);
+	}
+}
+
+BufferCapacityInfo PrewarmStrategy::CalculateMaxAvailableBlocks() {
+	BufferCapacityInfo info;
+	info.block_size = block_manager.GetBlockAllocSize();
+	info.max_memory = buffer_manager.GetMaxMemory();
+	info.used_memory = buffer_manager.GetUsedMemory();
+	info.available_memory = info.max_memory > info.used_memory ? info.max_memory - info.used_memory : 0;
+
+	// It is possible due to concurrent access for buffer pool
+	D_ASSERT(info.used_memory <= info.max_memory);
+
+	// Calculate maximum blocks we can load
+	info.max_blocks = static_cast<idx_t>((static_cast<double>(info.available_memory) * PREWARM_BUFFER_USAGE_RATIO) /
+	                                     static_cast<double>(info.block_size));
+
+	return info;
+}
+
+} // namespace duckdb

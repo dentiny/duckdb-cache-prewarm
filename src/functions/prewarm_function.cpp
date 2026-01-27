@@ -1,6 +1,6 @@
 #include "cache_prewarm_extension.hpp"
 #include "core/block_collector.hpp"
-#include "core/prewarm_strategies.hpp"
+#include "core/prewarm_strategy_factory.hpp"
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
