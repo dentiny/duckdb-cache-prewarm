@@ -63,9 +63,6 @@ SELECT
     random() * 1000 AS value
 FROM range(500000) t(i);
 
-statement ok
-CHECKPOINT;
-
 restart
 
 query I

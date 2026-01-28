@@ -54,6 +54,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 
 		// Read blocks from storage
 		try {
+			// TODO: we could parallel read blocks here.
 			block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), first_block, block_count);
 			blocks_read += block_count;
 		} catch (const IOException &e) {
