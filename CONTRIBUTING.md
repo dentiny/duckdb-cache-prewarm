@@ -27,7 +27,7 @@
 * Install `ccache` to improve compilation speed.
 * To pull latest dependencies, run `git submodule update --init --recursive`.
 * To build the project, run `CMAKE_BUILD_PARALLEL_LEVEL=$(nproc) make <debug>`.
-  * or `EXT_FLAGS="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache" GEN=ninja  make -j $(nproc)`
+  * recommend to use ccache to improve compilation speed.
 
 ### Managing dependencies
 DuckDB extensions use VCPKG for dependency management. Enabling VCPKG is very simple: follow the [installation instructions](https://vcpkg.io/en/getting-started) or just run the following:

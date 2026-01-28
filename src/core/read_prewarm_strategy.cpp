@@ -37,14 +37,12 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 	// Read blocks in batches where possible
 	for (size_t i = 0; i < unloaded_handles.size();) {
 		block_id_t first_block = unloaded_handles[i]->BlockId();
-		block_id_t last_block = first_block;
 		idx_t block_count = 1;
 
 		// Find consecutive blocks and limit the batch size to prevent memory overflow
 		while (i + block_count < unloaded_handles.size() &&
 		       unloaded_handles[i + block_count]->BlockId() == first_block + block_count &&
 		       block_count < max_batch_size) {
-			last_block = unloaded_handles[i + block_count]->BlockId();
 			block_count++;
 		}
 
@@ -58,7 +56,8 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 			block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), first_block, block_count);
 			blocks_read += block_count;
 		} catch (const IOException &e) {
-			// TODO: the SingleFileBlockManager::ReadBlock sometime throws file out-of-bounds exception, we have to do further investigation and fix it.
+			// TODO: the SingleFileBlockManager::ReadBlock sometime throws file out-of-bounds exception, we have to do
+			// further investigation and fix it.
 			continue;
 		}
 		i += block_count;

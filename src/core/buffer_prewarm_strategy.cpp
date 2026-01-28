@@ -31,7 +31,8 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 		                capacity_info.available_memory, blocks_to_prewarm * capacity_info.block_size);
 	}
 
-	// TODO: split the blocks into smaller-sized groups even if they are consecutive, and perform bpm prefetch concurrently to maximize disk bandwidth.
+	// TODO: split the blocks into smaller-sized groups even if they are consecutive, and perform bpm prefetch
+	// concurrently to maximize disk bandwidth.
 	buffer_manager.Prefetch(unloaded_handles);
 
 	idx_t blocks_loaded = 0;
