@@ -58,17 +58,8 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 			block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), first_block, block_count);
 			blocks_read += block_count;
 		} catch (const IOException &e) {
-			// best effort to read the blocks
-			for (idx_t j = 0; j < block_count; j++) {
-				try {
-					auto temp_buffer = buffer_manager.Allocate(MemoryTag::BASE_TABLE, block_size, true);
-					block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), unloaded_handles[i + j]->BlockId(), 1);
-					blocks_read++;
-				} catch (const IOException &e) {
-					// Skip this block
-					continue;
-				}
-			}
+			// TODO: the SingleFileBlockManager::ReadBlock sometime throws file out-of-bounds exception, we have to do further investigation and fix it.
+			continue;
 		}
 		i += block_count;
 	}
