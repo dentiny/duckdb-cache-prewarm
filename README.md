@@ -40,7 +40,7 @@ CHECKPOINT;
 
 -- Prewarm the duckdb cache for the events table
 -- the result is the number of blocks prewarmed, which may vary depending on how the compression is applied to the table
--- NOTICE that, for some reasons, the result is mostly accurate and only for reference
+-- NOTICE that, the result is mostly accurate and only for reference
 SELECT prewarm('events'); -- or prewarm('events', 'buffer')
 ┌─────────────────────┐
 │ prewarm('events')   │
