@@ -50,6 +50,10 @@ protected:
 	//! Returns comprehensive buffer capacity information
 	BufferCapacityInfo CalculateMaxAvailableBlocks();
 
+	//! Register blocks and filter to unloaded ones
+	//! @param block_ids The set of block IDs to register
+	vector<shared_ptr<BlockHandle>> GetUnloadedBlockHandles(const unordered_set<block_id_t> &block_ids);
+
 	BlockManager &block_manager;
 	BufferManager &buffer_manager;
 	ClientContext &context;
