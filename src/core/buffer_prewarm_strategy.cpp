@@ -32,17 +32,10 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 	}
 
 	// TODO: split the blocks into smaller-sized groups even if they are consecutive, and perform bpm prefetch
-	// concurrently to maximize disk bandwidth.
+	// concurrently to minimize latency.
 	buffer_manager.Prefetch(unloaded_handles);
 
-	idx_t blocks_loaded = 0;
-	for (auto &handle : unloaded_handles) {
-		if (handle->GetState() == BlockState::BLOCK_LOADED) {
-			blocks_loaded++;
-		}
-	}
-
-	return blocks_loaded;
+	return unloaded_handles.size();
 }
 
 } // namespace duckdb

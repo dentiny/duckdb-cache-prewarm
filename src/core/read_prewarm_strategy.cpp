@@ -58,6 +58,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 		} catch (const IOException &e) {
 			// TODO: the SingleFileBlockManager::ReadBlock sometime throws file out-of-bounds exception, we have to do
 			// further investigation and fix it.
+			// https://github.com/dentiny/duckdb-cache-prewarm/issues/23
 			continue;
 		}
 		i += block_count;
