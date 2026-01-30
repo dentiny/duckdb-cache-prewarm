@@ -16,8 +16,14 @@ project(${TARGET_NAME})
 include_directories(src/include)
 
 set(EXTENSION_SOURCES
-    src/cache_prewarm_extension.cpp src/functions/prewarm_function.cpp
-    src/core/block_collector.cpp src/core/prewarm_strategies.cpp)
+    src/cache_prewarm_extension.cpp
+    src/core/block_collector.cpp
+    src/core/buffer_prewarm_strategy.cpp
+    src/core/prefetch_prewarm_strategy.cpp
+    src/core/prewarm_strategy.cpp
+    src/core/prewarm_strategy_factory.cpp
+    src/core/read_prewarm_strategy.cpp
+    src/functions/prewarm_function.cpp)
 
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})

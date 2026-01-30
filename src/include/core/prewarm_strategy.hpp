@@ -50,51 +50,13 @@ protected:
 	//! Returns comprehensive buffer capacity information
 	BufferCapacityInfo CalculateMaxAvailableBlocks();
 
+	//! Register blocks and filter to unloaded ones
+	//! @param block_ids The set of block IDs to register
+	vector<shared_ptr<BlockHandle>> GetUnloadedBlockHandles(const unordered_set<block_id_t> &block_ids);
+
 	BlockManager &block_manager;
 	BufferManager &buffer_manager;
 	ClientContext &context;
 };
-
-//===--------------------------------------------------------------------===//
-// Concrete Prewarm Strategies
-//===--------------------------------------------------------------------===//
-
-//! Prewarm strategy: Load blocks into buffer pool
-class BufferPrewarmStrategy : public PrewarmStrategy {
-public:
-	BufferPrewarmStrategy(ClientContext &context, BlockManager &block_manager, BufferManager &buffer_manager)
-	    : PrewarmStrategy(context, block_manager, buffer_manager) {
-	}
-
-	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) override;
-};
-
-//! Prewarm strategy: Read blocks directly from storage (not into buffer pool)
-class ReadPrewarmStrategy : public PrewarmStrategy {
-public:
-	ReadPrewarmStrategy(ClientContext &context, BlockManager &block_manager, BufferManager &buffer_manager)
-	    : PrewarmStrategy(context, block_manager, buffer_manager) {
-	}
-
-	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) override;
-};
-
-//! Prewarm strategy: Hint OS to prefetch blocks (non-blocking)
-class PrefetchPrewarmStrategy : public PrewarmStrategy {
-public:
-	PrefetchPrewarmStrategy(ClientContext &context, BlockManager &block_manager, BufferManager &buffer_manager)
-	    : PrewarmStrategy(context, block_manager, buffer_manager) {
-	}
-
-	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) override;
-};
-
-//===--------------------------------------------------------------------===//
-// Strategy Factory
-//===--------------------------------------------------------------------===//
-
-//! Create a prewarm strategy based on mode
-unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(ClientContext &context, PrewarmMode mode, BlockManager &block_manager,
-                                                  BufferManager &buffer_manager);
 
 } // namespace duckdb
