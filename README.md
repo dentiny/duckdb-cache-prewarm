@@ -1,4 +1,4 @@
-# CachePrewarm
+# DuckDB Cache Prewarm
 
 This repository is based on https://github.com/duckdb/extension-template, check it out if you want to build and ship your own DuckDB extension.
 
@@ -57,6 +57,17 @@ SELECT prewarm('events', 'read');
 ├───────────────────────────┤
 │            19             │
 └───────────────────────────┘
+
+-- Prewarm the os page cache for the events table using the prefetch strategy
+-- which will use the OS-specific prefetch hints to prefetch the blocks into the page cache
+SELECT prewarm('events', 'prefetch');
+┌───────────────────────────────┐
+│ prewarm('events', 'prefetch') │
+│           int64               │
+├───────────────────────────────┤
+│              24               │
+└───────────────────────────────┘
+
 ```
 
 ## TODO
