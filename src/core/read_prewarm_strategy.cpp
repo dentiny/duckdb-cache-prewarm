@@ -42,7 +42,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 		// Find consecutive blocks and limit the batch size to prevent memory overflow
 		while (i + block_count < unloaded_handles.size() &&
 		       unloaded_handles[i + block_count]->BlockId() == first_block + block_count &&
-		       block_count < max_batch_size) {
+		       block_count < max_batch_size && (block_count + 1) * block_size <= INT_MAX) {
 			block_count++;
 		}
 
