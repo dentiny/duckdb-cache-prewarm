@@ -34,11 +34,27 @@ FROM range(1000000) t(i);
 
 restart
 
-# Prewarm the duckdb cache for the requests table
+# Prewarm the duckdb cache for the requests table using default BUFFER mode
 query I
 SELECT prewarm('requests');
 ----
 0
+
+restart
+
+# Test READ mode on the requests table
+query I
+SELECT prewarm('requests', 'read');
+----
+0
+
+restart
+
+# prefetch mode on the requests table
+query I
+SELECT prewarm('requests', 'prefetch') >= 24;
+----
+true
 
 statement ok
 CREATE TABLE events (
@@ -78,3 +94,12 @@ query I
 SELECT prewarm('events', 'read') >= 0;
 ----
 true
+
+restart
+
+# prefetch mode on the events table
+query I
+SELECT prewarm('events', 'prefetch') >= 24;
+----
+true
+

@@ -30,7 +30,7 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 #else
 	// Non-Unix platforms not supported
 	throw NotImplementedException(
-		"PREFETCH prewarm strategy is only supported on Unix-like systems (Linux, macOS, BSD)");
+	    "PREFETCH prewarm strategy is only supported on Unix-like systems (Linux, macOS, BSD)");
 #endif
 }
 
