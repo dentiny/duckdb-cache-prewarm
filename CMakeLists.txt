@@ -1,7 +1,8 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 
 # Set extension name here
 set(TARGET_NAME cache_prewarm)
+set(CMAKE_CXX_STANDARD 14)
 
 # DuckDB's extension distribution supports vcpkg. As such, dependencies can be
 # added in ./vcpkg.json and then used in cmake with find_package. Feel free to
