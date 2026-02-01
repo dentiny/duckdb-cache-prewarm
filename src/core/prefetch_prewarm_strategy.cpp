@@ -9,8 +9,6 @@ namespace duckdb {
 idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
 	CheckDirectIO("PREFETCH");
 
-	auto *single_file_manager = dynamic_cast<SingleFileBlockManager *>(&block_manager);
-
 	auto block_size = block_manager.GetBlockAllocSize();
 
 	// Sort block IDs for sequential prefetch hints

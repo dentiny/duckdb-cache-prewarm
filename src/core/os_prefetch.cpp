@@ -1,5 +1,8 @@
 #include "core/os_prefetch.hpp"
+
 #include "duckdb/storage/storage_info.hpp"
+#include "scope_guard.hpp"
+#include "utils/include/block_offset.hpp"
 
 #ifndef _WIN32
 #include <fcntl.h>
@@ -19,29 +22,25 @@ namespace duckdb {
 // https://github.com/postgres/postgres/blob/228fe0c3e68ef37b7e083fcb513664b9737c4d93/src/backend/storage/file/fd.c#L2054-L2116
 
 idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_blocks, idx_t block_size) {
-	// Open the database file with read-only access
 	int fd = open(db_path.c_str(), O_RDONLY);
 	if (fd < 0) {
-		return 0; // Failed to open, caller will fall back
+		return 0;
 	}
+	SCOPE_EXIT {
+		close(fd);
+	};
 
 	// Get file size to avoid prefetching beyond EOF
 	struct stat st;
 	if (fstat(fd, &st) != 0) {
-		close(fd);
 		return 0;
 	}
 	off_t file_size = st.st_size;
 
 	idx_t blocks_prefetched = 0;
 
-	// File header size in DuckDB (blocks start after header)
-	constexpr uint64_t BLOCK_START = Storage::FILE_HEADER_SIZE * 3;
-
 	for (block_id_t block_id : sorted_blocks) {
-		// Calculate file offset for this block
-		// https://github.com/duckdb/duckdb/blob/6ddac802ffa9bcfbcc3f5f0d71de5dff9b0bc250/src/storage/single_file_block_manager.cpp#L917-L919
-		uint64_t offset = BLOCK_START + (static_cast<uint64_t>(block_id) * block_size);
+		uint64_t offset = GetBlockFileOffset(block_id, block_size);
 
 		// Verify the block offset is within file bounds
 		// TODO: https://github.com/dentiny/duckdb-cache-prewarm/issues/23
@@ -96,13 +95,11 @@ idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_b
 		}
 
 #else
-		// Other Unix systems: No OS-level prefetch hint available
-		// Still count the block to report progress, but no actual prefetch occurs
-		blocks_prefetched++;
+		// No OS-level prefetch hint is issued on this platform, so do not count this block
+		// as successfully prefetched.
 #endif
 	}
 
-	close(fd);
 	return blocks_prefetched;
 }
 
