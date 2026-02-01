@@ -1,40 +1,32 @@
-This benchmark only works on Linux.
+# DuckDB Cache Prewarm Benchmark
 
-1. at project root, run
+## ClickBench
+
+See `bench/clickbench.cpp` for implementation details.
+
 ```bash
-EXT_FLAGS="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache" GEN=ninja  make -j $(nproc)
+make
+
+cd bench
+
+# Download the data
+wget --continue --progress=dot:giga 'https://datasets.clickhouse.com/hits_compatible/hits.parquet' -O hits.parquet
+
+# Create the database
+../build/release/duckdb clickbench.db -c "CREATE TABLE hits AS SELECT * FROM read_parquet('hits.parquet');"
+
+# Run the benchmark with 3 repeats of query 1st sql in queries.sql with buffer mode
+../build/release/bench/clickbench -d clickbench.db -q queries.sql -r 3 -m buffer -i 1
+
+# or, run all queries with all modes, each query is run 3 times
+./run_all.sh
 ```
-2. `cd bench` at bench directory,
-     -  run `./benchmark.sh <mode> [query_indices]`
-     - mode can be `baseline`, `buffer`, `read`, `prefetch`
-     - query_indices (optional):
-       - `all`: Run all queries (default)
-       - `5`: Run only query 5
-       - `1-10`: Run queries 1 through 10
-       - `1,3,5`: Run queries 1, 3, and 5
-       - `1-5,10,15-20`: Run queries 1-5, 10, and 15-20
 
-## Examples
+Output:
 
 ```bash
-# Run all queries with baseline (no prewarm)
-./benchmark.sh baseline
+Running 1 queries with mode: buffer
 
-# Run all queries with buffer mode
-./benchmark.sh buffer
-
-# Run only query 5 with buffer mode
-./benchmark.sh buffer 5
-
-# Run queries 1-10 with read mode
-./benchmark.sh read 1-10
-
-# Run specific queries (1, 3, 5) with prefetch mode
-./benchmark.sh prefetch 1,3,5
-
-# Run queries 1-5, 10, and 15-20 with buffer mode
-./benchmark.sh buffer 1-5,10,15-20
-
-# Use run.sh directly for more control
-./run.sh buffer 1-5
+Prewarm time: min: 19163.1 ms - max: 24579.2 ms - average: 21706.7 ms
+Query time: min: 5.38162 ms - max: 34.369 ms - average: 15.9057 ms
 ```
