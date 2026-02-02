@@ -10,6 +10,7 @@ namespace duckdb {
 
 namespace {
 
+// Use ~4MB batches (16 * default 256KB blocks) to balance throughput and buffer pool pressure.
 constexpr idx_t BUFFER_PREFETCH_TARGET_BYTES = 4ULL * 1024ULL * 1024ULL;
 
 idx_t CalculateBlockGroupSize(idx_t block_size, idx_t max_blocks, idx_t max_threads, idx_t target_bytes) {

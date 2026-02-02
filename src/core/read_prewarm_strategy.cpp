@@ -14,6 +14,7 @@ namespace duckdb {
 
 namespace {
 
+// Target ~512KB per read batch to align with page cache granularity while limiting temp buffer usage.
 constexpr idx_t READ_PREFETCH_TARGET_BYTES = Storage::SECTOR_SIZE * 128;
 
 idx_t CalculateBlockGroupSize(idx_t block_size, idx_t max_blocks, idx_t max_threads, idx_t target_bytes) {

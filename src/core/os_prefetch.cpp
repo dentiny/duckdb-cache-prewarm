@@ -24,6 +24,7 @@ namespace duckdb {
 
 namespace {
 
+// Target ~512KB per hint batch to align with page cache granularity.
 constexpr idx_t PREFETCH_CHUNK_SIZE = Storage::SECTOR_SIZE * 128;
 
 idx_t CalculateBlocksPerTask(idx_t block_size, idx_t total_blocks, idx_t max_threads) {
@@ -145,7 +146,9 @@ idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_b
 			if (local_fd < 0) {
 				return;
 			}
-			[[maybe_unused]] auto fd_closer = ScopeGuard([&]() { close(local_fd); });
+			SCOPE_EXIT {
+				close(local_fd);
+			};
 			worker_results[task_index] =
 			    OSPrefetchBlocksRange(local_fd, sorted_blocks, block_size, start_idx, end_idx, file_size);
 		});
