@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <thread>
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #include <sys/fcntl.h>
 #endif
@@ -21,25 +22,25 @@ namespace duckdb {
 // See:
 // https://github.com/postgres/postgres/blob/228fe0c3e68ef37b7e083fcb513664b9737c4d93/src/backend/storage/file/fd.c#L2054-L2116
 
-idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_blocks, idx_t block_size) {
-	int fd = open(db_path.c_str(), O_RDONLY);
-	if (fd < 0) {
+namespace {
+
+constexpr idx_t PREFETCH_CHUNK_SIZE = Storage::SECTOR_SIZE * 128;
+
+idx_t CalculateBlocksPerTask(idx_t block_size, idx_t total_blocks, idx_t max_threads) {
+	if (total_blocks == 0) {
 		return 0;
 	}
-	SCOPE_EXIT {
-		close(fd);
-	};
+	auto target_blocks = std::max<idx_t>(1, PREFETCH_CHUNK_SIZE / block_size);
+	auto concurrency = std::max<idx_t>(1, std::min<idx_t>(total_blocks, max_threads));
+	auto max_blocks_per_task = std::max<idx_t>(1, total_blocks / concurrency);
+	return std::max(target_blocks, max_blocks_per_task);
+}
 
-	// Get file size to avoid prefetching beyond EOF
-	struct stat st;
-	if (fstat(fd, &st) != 0) {
-		return 0;
-	}
-	off_t file_size = st.st_size;
-
+idx_t OSPrefetchBlocksRange(int fd, const vector<block_id_t> &sorted_blocks, idx_t block_size, idx_t start_idx,
+                            idx_t end_idx, off_t file_size) {
 	idx_t blocks_prefetched = 0;
-
-	for (block_id_t block_id : sorted_blocks) {
+	for (idx_t idx = start_idx; idx < end_idx; idx++) {
+		auto block_id = sorted_blocks[idx];
 		uint64_t offset = GetBlockFileOffset(block_id, block_size);
 
 		// Verify the block offset is within file bounds
@@ -98,6 +99,61 @@ idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_b
 		// No OS-level prefetch hint is issued on this platform, so do not count this block
 		// as successfully prefetched.
 #endif
+	}
+
+	return blocks_prefetched;
+}
+
+} // namespace
+
+idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_blocks, idx_t block_size) {
+	int fd = open(db_path.c_str(), O_RDONLY);
+	if (fd < 0) {
+		return 0;
+	}
+	SCOPE_EXIT {
+		close(fd);
+	};
+
+	// Get file size to avoid prefetching beyond EOF
+	struct stat st;
+	if (fstat(fd, &st) != 0) {
+		return 0;
+	}
+	off_t file_size = st.st_size;
+
+	auto total_blocks = sorted_blocks.size();
+	auto max_threads = std::max<idx_t>(1, std::thread::hardware_concurrency());
+	auto blocks_per_task = CalculateBlocksPerTask(block_size, total_blocks, max_threads);
+	if (blocks_per_task == 0 || total_blocks == 0) {
+		return 0;
+	}
+
+	if (max_threads == 1 || blocks_per_task >= total_blocks) {
+		return OSPrefetchBlocksRange(fd, sorted_blocks, block_size, 0, total_blocks, file_size);
+	}
+
+	vector<std::thread> workers;
+	vector<idx_t> worker_results;
+	for (idx_t start_idx = 0; start_idx < total_blocks; start_idx += blocks_per_task) {
+		auto end_idx = std::min<idx_t>(total_blocks, start_idx + blocks_per_task);
+		worker_results.push_back(0);
+		auto result_index = worker_results.size() - 1;
+		workers.emplace_back([fd, &sorted_blocks, block_size, start_idx, end_idx, file_size, &worker_results,
+		                      result_index]() {
+			worker_results[result_index] =
+			    OSPrefetchBlocksRange(fd, sorted_blocks, block_size, start_idx, end_idx, file_size);
+		});
+	}
+
+	idx_t blocks_prefetched = 0;
+	for (auto &worker : workers) {
+		if (worker.joinable()) {
+			worker.join();
+		}
+	}
+	for (auto blocks : worker_results) {
+		blocks_prefetched += blocks;
 	}
 
 	return blocks_prefetched;
