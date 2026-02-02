@@ -1,15 +1,12 @@
 #include "core/prefetch_prewarm_strategy.hpp"
 #include "core/os_prefetch.hpp"
 
-#include "duckdb/storage/single_file_block_manager.hpp"
 #include "duckdb/storage/storage_manager.hpp"
 
 namespace duckdb {
 
 idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
 	CheckDirectIO("PREFETCH");
-
-	auto *single_file_manager = dynamic_cast<SingleFileBlockManager *>(&block_manager);
 
 	auto block_size = block_manager.GetBlockAllocSize();
 
