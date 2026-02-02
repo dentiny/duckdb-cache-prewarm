@@ -39,3 +39,12 @@ install(
   EXPORT "${DUCKDB_EXPORT_SET}"
   LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
   ARCHIVE DESTINATION "${INSTALL_LIB_DIR}")
+
+# Benchmark
+if(BUILD_MAIN_DUCKDB_LIBRARY)
+  add_executable(clickbench bench/clickbench.cpp)
+  target_link_libraries(clickbench duckdb ${EXTENSION_NAME})
+  # Output to build/release/bench/clickbench (CMAKE_BINARY_DIR is the top-level build dir when in add_subdirectory)
+set_target_properties(clickbench PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bench")
+  install(TARGETS clickbench RUNTIME DESTINATION "${INSTALL_BIN_DIR}")
+endif()
