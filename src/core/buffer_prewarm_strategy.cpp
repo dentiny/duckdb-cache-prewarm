@@ -25,8 +25,8 @@ idx_t CalculateBlockGroupSize(idx_t block_size, idx_t max_blocks, idx_t max_thre
 class BufferPrefetchTask : public BaseExecutorTask {
 public:
 	BufferPrefetchTask(TaskExecutor &executor, BufferManager &buffer_manager_p,
-	                   vector<shared_ptr<BlockHandle>> &handles_p, idx_t start_p, idx_t count_p)
-	    : BaseExecutorTask(executor), buffer_manager(buffer_manager_p), handles(handles_p), start(start_p),
+	                   shared_ptr<vector<shared_ptr<BlockHandle>>> handles_p, idx_t start_p, idx_t count_p)
+	    : BaseExecutorTask(executor), buffer_manager(buffer_manager_p), handles(std::move(handles_p)), start(start_p),
 	      count(count_p) {
 	}
 
@@ -34,18 +34,18 @@ public:
 		vector<shared_ptr<BlockHandle>> batch;
 		batch.reserve(count);
 		for (idx_t idx = 0; idx < count; idx++) {
-			batch.push_back(handles[start + idx]);
+			batch.push_back((*handles)[start + idx]);
 		}
 		buffer_manager.Prefetch(batch);
 	}
 
 	string TaskType() const override {
-		return "BufferPrewarmTask";
+		return "BufferPrefetchTask";
 	}
 
 private:
 	BufferManager &buffer_manager;
-	vector<shared_ptr<BlockHandle>> &handles;
+	shared_ptr<vector<shared_ptr<BlockHandle>>> handles;
 	idx_t start;
 	idx_t count;
 };
@@ -85,10 +85,6 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 		return 0;
 	}
 
-	std::sort(
-	    unloaded_handles.begin(), unloaded_handles.end(),
-	    [](const shared_ptr<BlockHandle> &a, const shared_ptr<BlockHandle> &b) { return a->BlockId() < b->BlockId(); });
-
 	if (thread_count == 1 || blocks_per_task >= unloaded_handles.size()) {
 		for (idx_t start = 0; start < unloaded_handles.size(); start += blocks_per_task) {
 			auto count = std::min<idx_t>(blocks_per_task, unloaded_handles.size() - start);
@@ -102,10 +98,15 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 		return unloaded_handles.size();
 	}
 
+	std::sort(
+	    unloaded_handles.begin(), unloaded_handles.end(),
+	    [](const shared_ptr<BlockHandle> &a, const shared_ptr<BlockHandle> &b) { return a->BlockId() < b->BlockId(); });
+
 	TaskExecutor executor(context);
+	auto shared_handles = make_shared_ptr<vector<shared_ptr<BlockHandle>>>(unloaded_handles);
 	for (idx_t start = 0; start < unloaded_handles.size(); start += blocks_per_task) {
 		auto count = std::min<idx_t>(blocks_per_task, unloaded_handles.size() - start);
-		auto task = make_uniq<BufferPrefetchTask>(executor, buffer_manager, unloaded_handles, start, count);
+		auto task = make_uniq<BufferPrefetchTask>(executor, buffer_manager, shared_handles, start, count);
 		executor.ScheduleTask(std::move(task));
 	}
 	executor.WorkOnTasks();

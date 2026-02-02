@@ -33,7 +33,7 @@ idx_t CalculateBlocksPerTask(idx_t block_size, idx_t total_blocks, idx_t max_thr
 	auto target_blocks = std::max<idx_t>(1, PREFETCH_CHUNK_SIZE / block_size);
 	auto concurrency = std::max<idx_t>(1, std::min<idx_t>(total_blocks, max_threads));
 	auto max_blocks_per_task = std::max<idx_t>(1, total_blocks / concurrency);
-	return std::max(target_blocks, max_blocks_per_task);
+	return std::min(target_blocks, max_blocks_per_task);
 }
 
 idx_t OSPrefetchBlocksRange(int fd, const vector<block_id_t> &sorted_blocks, idx_t block_size, idx_t start_idx,
@@ -134,15 +134,20 @@ idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_b
 	}
 
 	vector<std::thread> workers;
-	vector<idx_t> worker_results;
-	for (idx_t start_idx = 0; start_idx < total_blocks; start_idx += blocks_per_task) {
+	auto task_count = (total_blocks + blocks_per_task - 1) / blocks_per_task;
+	vector<idx_t> worker_results(task_count, 0);
+	for (idx_t task_index = 0; task_index < task_count; task_index++) {
+		auto start_idx = task_index * blocks_per_task;
 		auto end_idx = std::min<idx_t>(total_blocks, start_idx + blocks_per_task);
-		worker_results.push_back(0);
-		auto result_index = worker_results.size() - 1;
-		workers.emplace_back([fd, &sorted_blocks, block_size, start_idx, end_idx, file_size, &worker_results,
-		                      result_index]() {
-			worker_results[result_index] =
-			    OSPrefetchBlocksRange(fd, sorted_blocks, block_size, start_idx, end_idx, file_size);
+		workers.emplace_back([db_path, &sorted_blocks, block_size, start_idx, end_idx, file_size, &worker_results,
+		                      task_index]() {
+			int local_fd = open(db_path.c_str(), O_RDONLY);
+			if (local_fd < 0) {
+				return;
+			}
+			auto local_guard = ScopeGuard([&]() { close(local_fd); });
+			worker_results[task_index] =
+			    OSPrefetchBlocksRange(local_fd, sorted_blocks, block_size, start_idx, end_idx, file_size);
 		});
 	}
 
