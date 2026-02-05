@@ -65,7 +65,7 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 		                "  Table blocks: %llu\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"
 		                "  Current available memory: %llu bytes, consider increasing memory_limit",
-		                total_blocks, total_blocks, blocks_skipped,
+		                total_blocks, capacity_info.max_blocks, blocks_skipped,
 		                capacity_info.available_memory);
 		total_blocks = sorted_blocks->size();
 	}
