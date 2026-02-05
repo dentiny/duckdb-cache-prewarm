@@ -21,7 +21,8 @@ namespace duckdb {
 // See:
 // https://github.com/postgres/postgres/blob/228fe0c3e68ef37b7e083fcb513664b9737c4d93/src/backend/storage/file/fd.c#L2054-L2116
 
-idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_blocks, idx_t block_size) {
+idx_t OSPrefetchBlocks(const string &db_path, vector<block_id_t>::const_iterator begin,
+                       vector<block_id_t>::const_iterator end, idx_t block_size) {
 	int fd = open(db_path.c_str(), O_RDONLY);
 	if (fd < 0) {
 		return 0;
@@ -39,7 +40,8 @@ idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_b
 
 	idx_t blocks_prefetched = 0;
 
-	for (block_id_t block_id : sorted_blocks) {
+	for (auto it = begin; it != end; ++it) {
+		block_id_t block_id = *it;
 		uint64_t offset = GetBlockFileOffset(block_id, block_size);
 
 		// Verify the block offset is within file bounds
@@ -106,7 +108,8 @@ idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_b
 #else
 
 // Windows: Not supported
-idx_t OSPrefetchBlocks(const string &db_path, const vector<block_id_t> &sorted_blocks, idx_t block_size) {
+idx_t OSPrefetchBlocks(const string &db_path, vector<block_id_t>::const_iterator begin,
+                       vector<block_id_t>::const_iterator end, idx_t block_size) {
 	return 0;
 }
 

@@ -54,6 +54,14 @@ protected:
 	//! @param block_ids The set of block IDs to register
 	vector<shared_ptr<BlockHandle>> GetUnloadedBlockHandles(const unordered_set<block_id_t> &block_ids);
 
+	//! Calculate the number of blocks per parallel task
+	//! @param block_size Size of each block in bytes
+	//! @param max_blocks Maximum number of blocks available
+	//! @param max_threads Maximum number of threads available
+	//! @param target_bytes Target bytes per task for optimal I/O performance
+	//! @return Number of blocks per task (0 if no blocks available)
+	static idx_t CalculateBlocksPerTask(idx_t block_size, idx_t max_blocks, idx_t max_threads, idx_t target_bytes);
+
 	BlockManager &block_manager;
 	BufferManager &buffer_manager;
 	ClientContext &context;

@@ -52,4 +52,15 @@ vector<shared_ptr<BlockHandle>> PrewarmStrategy::GetUnloadedBlockHandles(const u
 	return unloaded_handles;
 }
 
+idx_t PrewarmStrategy::CalculateBlocksPerTask(idx_t block_size, idx_t max_blocks, idx_t max_threads,
+                                              idx_t target_bytes) {
+	if (max_blocks == 0) {
+		return 0;
+	}
+	auto target_blocks = std::max(1ULL, target_bytes / block_size);
+	auto concurrency = std::max(1ULL, std::min(max_blocks, max_threads));
+	auto max_blocks_per_task = std::max(1ULL, max_blocks / concurrency);
+	return std::min(target_blocks, max_blocks_per_task);
+}
+
 } // namespace duckdb
