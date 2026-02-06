@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run compare_modes.sh for each query 1-43
+# Run all 43 ClickBench queries with all modes (baseline, buffer, read, prefetch)
 
 cd "$(dirname "$0")"
 
