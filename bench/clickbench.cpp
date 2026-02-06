@@ -227,19 +227,21 @@ int main(int argc, char **argv) {
                     auto start = std::chrono::steady_clock::now();
                     auto prewarmResult = con.Query(prewarmSql);
                     auto end = std::chrono::steady_clock::now();
-                    prewarmTimes.push_back(std::chrono::duration<double, std::milli>(end - start).count());
                     if (prewarmResult->HasError()) {
                         error = duckdb_fmt::format("Prewarm failed: {}", prewarmResult->GetError());
+                        break;
                     }
+                    prewarmTimes.push_back(std::chrono::duration<double, std::milli>(end - start).count());
                 }
 
                 auto start = std::chrono::steady_clock::now();
                 auto result = con.Query(query);
                 auto end = std::chrono::steady_clock::now();
-                queryTimes.push_back(std::chrono::duration<double, std::milli>(end - start).count());
                 if (result->HasError()) {
                     error = duckdb_fmt::format("Query {} error: {}", queryNum, result->GetError());
+                    break;
                 }
+                queryTimes.push_back(std::chrono::duration<double, std::milli>(end - start).count());
             }
             if (!error.empty()) {
                 std::cerr << error << "\n";
