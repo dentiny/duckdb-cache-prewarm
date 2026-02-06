@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
             i++;
             continue;
         }
-		if (a == "--purge") {
+		if (a == "--purge" && i + 1 < argc) {
             std::string s = argv[++i];
             if (s == "true") {
                 purgeBetween = true;
