@@ -1,10 +1,47 @@
 #include "core/buffer_prewarm_strategy.hpp"
 
+#include "duckdb/logging/logger.hpp"
+#include "duckdb/parallel/task_executor.hpp"
+#include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/storage/buffer/block_handle.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
-#include "duckdb/logging/logger.hpp"
 
 namespace duckdb {
+
+namespace {
+
+// Use ~4MiB batches (16 * default 256KiB blocks) to balance throughput and buffer pool pressure.
+constexpr idx_t BUFFER_PREFETCH_TARGET_BYTES = 4ULL * 1024ULL * 1024ULL;
+
+class BufferPrefetchTask : public BaseExecutorTask {
+public:
+	BufferPrefetchTask(TaskExecutor &executor, BufferManager &buffer_manager_p,
+	                   vector<shared_ptr<BlockHandle>> &handles_p, idx_t start_p, idx_t count_p)
+	    : BaseExecutorTask(executor), buffer_manager(buffer_manager_p), handles(handles_p), start(start_p),
+	      count(count_p) {
+	}
+
+	void ExecuteTask() override {
+		vector<shared_ptr<BlockHandle>> batch;
+		batch.reserve(count);
+		for (idx_t idx = 0; idx < count; idx++) {
+			batch.push_back(handles[start + idx]);
+		}
+		buffer_manager.Prefetch(batch);
+	}
+
+	string TaskType() const override {
+		return "BufferPrefetchTask";
+	}
+
+private:
+	BufferManager &buffer_manager;
+	vector<shared_ptr<BlockHandle>> &handles;
+	idx_t start;
+	idx_t count;
+};
+
+} // namespace
 
 idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
 	auto unloaded_handles = GetUnloadedBlockHandles(block_ids);
@@ -31,9 +68,25 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 		                capacity_info.available_memory, blocks_to_prewarm * capacity_info.block_size);
 	}
 
-	// TODO: split the blocks into smaller-sized groups even if they are consecutive, and perform bpm prefetch
-	// concurrently to minimize latency.
-	buffer_manager.Prefetch(unloaded_handles);
+	auto thread_count = std::max(1, TaskScheduler::GetScheduler(context).NumberOfThreads());
+	auto blocks_per_task = CalculateBlocksPerTask(capacity_info.block_size, capacity_info.max_blocks, thread_count,
+	                                              BUFFER_PREFETCH_TARGET_BYTES);
+	if (blocks_per_task == 0) {
+		return 0;
+	}
+
+	std::sort(
+	    unloaded_handles.begin(), unloaded_handles.end(),
+	    [](const shared_ptr<BlockHandle> &a, const shared_ptr<BlockHandle> &b) { return a->BlockId() < b->BlockId(); });
+
+	TaskExecutor executor(context);
+	auto shared_handles = make_shared_ptr<vector<shared_ptr<BlockHandle>>>(unloaded_handles);
+	for (idx_t start = 0; start < unloaded_handles.size(); start += blocks_per_task) {
+		auto count = std::min<idx_t>(blocks_per_task, unloaded_handles.size() - start);
+		auto task = make_uniq<BufferPrefetchTask>(executor, buffer_manager, shared_handles, start, count);
+		executor.ScheduleTask(std::move(task));
+	}
+	executor.WorkOnTasks();
 
 	return unloaded_handles.size();
 }
