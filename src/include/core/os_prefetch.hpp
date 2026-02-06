@@ -24,7 +24,7 @@ namespace duckdb {
 //! @param block_size Size of each block in bytes
 //! @return Number of blocks successfully prefetched (0 if prefetch failed or not supported)
 template <typename Iterator>
-inline idx_t OSPrefetchBlocks(const string &db_path, Iterator begin, Iterator end, idx_t block_size) {
+idx_t OSPrefetchBlocks(const string &db_path, Iterator begin, Iterator end, idx_t block_size) {
 #ifndef _WIN32
 	int fd = open(db_path.c_str(), O_RDONLY);
 	if (fd < 0) {

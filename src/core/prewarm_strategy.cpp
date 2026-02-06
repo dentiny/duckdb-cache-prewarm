@@ -57,10 +57,10 @@ idx_t PrewarmStrategy::CalculateBlocksPerTask(idx_t block_size, idx_t max_blocks
 	if (max_blocks == 0) {
 		return 0;
 	}
-	auto target_blocks = std::max(idx_t(1), target_bytes / block_size);
-	auto concurrency = std::max(idx_t(1), std::min(max_blocks, max_threads));
-	auto max_blocks_per_task = std::max(idx_t(1), max_blocks / concurrency);
-	return std::min(target_blocks, max_blocks_per_task);
+	auto target_blocks = std::max<idx_t>(1, target_bytes / block_size);
+	auto concurrency = std::max<idx_t>(1, std::min<idx_t>(max_blocks, max_threads));
+	auto max_blocks_per_task = std::max<idx_t>(1, max_blocks / concurrency);
+	return std::min<idx_t>(target_blocks, max_blocks_per_task);
 }
 
 } // namespace duckdb
