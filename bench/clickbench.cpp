@@ -16,9 +16,7 @@
 #include <vector>
 
 static void Usage(const char *prog) {
-	std::cerr << "Usage: " << prog << " [options] <mode> [query_indices]\n"
-	          << "  mode: baseline | buffer | read | prefetch\n"
-	          << "  query_indices: all (default) | 5 | 1-10 | 1,3,5 | 1-5,10\n"
+	std::cerr << "Usage: " << prog << " [options]\n"
 	          << "Options:\n"
               << "  -i <int>,<int>,<int>-<int>     Run i-th query, or a range of queries (default: all)\n"
               << "  -m <mode>    Mode: baseline | buffer | read | prefetch (default: baseline)\n"
