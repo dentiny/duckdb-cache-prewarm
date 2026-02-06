@@ -23,7 +23,7 @@ static void Usage(const char *prog) {
 	          << "  -d <path>    Database path (default: clickbench.db)\n"
 	          << "  -q <path>    Path to queries.sql (default: queries.sql)\n"
 	          << "  -r <int>     Number of times to repeat each query (default: 1)\n"
-	          << "  --purge      Clear OS page cache between queries (Linux/macOS; may need sudo) (default: true)\n";
+	          << "  --purge <true|false>  Clear OS page cache between queries (Linux/macOS; may need sudo) (default: true)\n";
 }
 
 enum class Mode { Baseline, Buffer, Read, Prefetch };
