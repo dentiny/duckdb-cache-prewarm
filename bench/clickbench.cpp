@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-static void usage(const char *prog) {
+static void Usage(const char *prog) {
 	std::cerr << "Usage: " << prog << " [options] <mode> [query_indices]\n"
 	          << "  mode: baseline | buffer | read | prefetch\n"
 	          << "  query_indices: all (default) | 5 | 1-10 | 1,3,5 | 1-5,10\n"
@@ -30,7 +30,7 @@ static void usage(const char *prog) {
 
 enum class Mode { Baseline, Buffer, Read, Prefetch };
 
-static Mode parse_mode(const std::string &s) {
+static Mode ParseMode(const std::string &s) {
 	if (s == "baseline") {
 		return Mode::Baseline;
 	}
@@ -46,7 +46,7 @@ static Mode parse_mode(const std::string &s) {
 	throw std::invalid_argument("mode must be baseline, buffer, read, or prefetch");
 }
 
-static std::string mode_str(Mode m) {
+static std::string ModeStr(Mode m) {
 	switch (m) {
 		case Mode::Baseline:
 			return "baseline";
@@ -100,7 +100,7 @@ static std::vector<size_t> parse_query_indices(const std::string &spec, size_t m
 	return out;
 }
 
-static void doPurge() {
+static void DoPurge() {
 #ifdef __linux__
 	(void)std::system("sync 2>/dev/null; echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null 2>&1");
 #elif defined(__APPLE__)
@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
 			continue;
 		}
         if (a == "-m" && i + 1 < argc) {
-            mode = parse_mode(argv[++i]);
+            mode = ParseMode(argv[++i]);
             i++;
             continue;
         }
@@ -152,19 +152,19 @@ int main(int argc, char **argv) {
                 purgeBetween = false;
             } else {
                 std::cerr << "Unknown option: " << a << "\n";
-                usage(argv[0]);
+                Usage(argv[0]);
                 return 1;
             }
 			i++;
 			continue;
 		}
 		if (a == "-h" || a == "--help") {
-			usage(argv[0]);
+			Usage(argv[0]);
 			return 0;
 		}
 		if (a[0] == '-') {
 			std::cerr << "Unknown option: " << a << "\n";
-			usage(argv[0]);
+			Usage(argv[0]);
 			return 1;
 		}
 		i++;
@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	std::cout << "Running " << indices.size() << " queries with mode: " << mode_str(mode) << "\n\n";
+	std::cout << "Running " << indices.size() << " queries with mode: " << ModeStr(mode) << "\n\n";
 
 	try {
 		for (size_t k = 0; k < indices.size(); k++) {
@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
                 size_t queryNum = idx + 1;
 
                 if (purgeBetween) {
-                    doPurge();
+                    DoPurge();
                 }
 
                 duckdb::DuckDB db(dbPath);
@@ -225,7 +225,7 @@ int main(int argc, char **argv) {
                 cache_prewarm.Load(loader);
 
                 if (mode != Mode::Baseline) {
-                    std::string prewarmSql = duckdb_fmt::format("SELECT prewarm('hits', '{}')", mode_str(mode));
+                    std::string prewarmSql = duckdb_fmt::format("SELECT prewarm('hits', '{}')", ModeStr(mode));
                     auto start = std::chrono::steady_clock::now();
                     auto prewarmResult = con.Query(prewarmSql);
                     auto end = std::chrono::steady_clock::now();
