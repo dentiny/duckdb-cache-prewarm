@@ -10,7 +10,7 @@ namespace duckdb {
 
 namespace {
 
-// Use ~4MB batches (16 * default 256KB blocks) to balance throughput and buffer pool pressure.
+// Use ~4MiB batches (16 * default 256KiB blocks) to balance throughput and buffer pool pressure.
 constexpr idx_t BUFFER_PREFETCH_TARGET_BYTES = 4ULL * 1024ULL * 1024ULL;
 
 class BufferPrefetchTask : public BaseExecutorTask {
