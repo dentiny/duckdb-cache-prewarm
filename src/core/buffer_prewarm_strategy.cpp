@@ -16,8 +16,8 @@ constexpr idx_t BUFFER_PREFETCH_TARGET_BYTES = 4ULL * 1024ULL * 1024ULL;
 class BufferPrefetchTask : public BaseExecutorTask {
 public:
 	BufferPrefetchTask(TaskExecutor &executor, BufferManager &buffer_manager_p,
-	                   shared_ptr<vector<shared_ptr<BlockHandle>>> handles_p, idx_t start_p, idx_t count_p)
-	    : BaseExecutorTask(executor), buffer_manager(buffer_manager_p), handles(std::move(handles_p)), start(start_p),
+	                   vector<shared_ptr<BlockHandle>> &handles_p, idx_t start_p, idx_t count_p)
+	    : BaseExecutorTask(executor), buffer_manager(buffer_manager_p), handles(handles_p), start(start_p),
 	      count(count_p) {
 	}
 
@@ -25,7 +25,7 @@ public:
 		vector<shared_ptr<BlockHandle>> batch;
 		batch.reserve(count);
 		for (idx_t idx = 0; idx < count; idx++) {
-			batch.push_back((*handles)[start + idx]);
+			batch.push_back(handles[start + idx]);
 		}
 		buffer_manager.Prefetch(batch);
 	}
@@ -36,7 +36,7 @@ public:
 
 private:
 	BufferManager &buffer_manager;
-	shared_ptr<vector<shared_ptr<BlockHandle>>> handles;
+	vector<shared_ptr<BlockHandle>> &handles;
 	idx_t start;
 	idx_t count;
 };

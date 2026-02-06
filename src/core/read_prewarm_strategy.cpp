@@ -1,5 +1,6 @@
 #include "core/read_prewarm_strategy.hpp"
 
+#include "duckdb/common/atomic.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/storage/buffer/block_handle.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
@@ -8,20 +9,19 @@
 #include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/storage/storage_info.hpp"
 #include <algorithm>
-#include <atomic>
 
 namespace duckdb {
 
 namespace {
 
-// Target ~512KB per read batch to align with page cache granularity while limiting temp buffer usage.
+// Target ~512KiB per read batch to align with page cache granularity while limiting temp buffer usage.
 constexpr idx_t READ_PREFETCH_TARGET_BYTES = Storage::SECTOR_SIZE * 128;
 
 class ReadBlockGroupTask : public BaseExecutorTask {
 public:
 	ReadBlockGroupTask(TaskExecutor &executor, ClientContext &context_p, BlockManager &block_manager_p,
 	                   BufferManager &buffer_manager_p, block_id_t first_block_p, idx_t block_count_p,
-	                   std::atomic<idx_t> &blocks_read_p)
+	                   atomic<idx_t> &blocks_read_p)
 	    : BaseExecutorTask(executor), block_manager(block_manager_p), buffer_manager(buffer_manager_p),
 	      context(context_p), first_block(first_block_p), block_count(block_count_p), blocks_read(blocks_read_p) {
 	}
@@ -32,7 +32,7 @@ public:
 			auto total_size = block_count * block_size;
 			auto temp_buffer = buffer_manager.Allocate(MemoryTag::BASE_TABLE, total_size, true);
 			block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), first_block, block_count);
-			blocks_read.fetch_add(block_count, std::memory_order_relaxed);
+			blocks_read += block_count;
 		} catch (const IOException &e) {
 			// TODO: the SingleFileBlockManager::ReadBlock sometimes throws file out-of-bounds exception, we have to do
 			// further investigation and fix it.
@@ -52,7 +52,7 @@ private:
 	ClientContext &context;
 	block_id_t first_block;
 	idx_t block_count;
-	std::atomic<idx_t> &blocks_read;
+	atomic<idx_t> &blocks_read;
 };
 
 } // namespace
@@ -103,7 +103,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 	}
 
 	TaskExecutor executor(context);
-	std::atomic<idx_t> parallel_blocks_read {0};
+	atomic<idx_t> parallel_blocks_read {0};
 
 	// Read blocks in batches where possible
 	for (size_t i = 0; i < unloaded_handles.size();) {
@@ -128,7 +128,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 	}
 
 	executor.WorkOnTasks();
-	blocks_read = parallel_blocks_read.load(std::memory_order_relaxed);
+	blocks_read = parallel_blocks_read;
 
 	return blocks_read;
 }
