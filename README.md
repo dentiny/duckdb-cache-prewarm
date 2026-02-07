@@ -30,6 +30,8 @@ SELECT prewarm('table_name', 'buffer', 'my_schema');
 | `read` | Synchronously read blocks from disk into temporary process memory. This warms the OS page cache but does not use DuckDB's buffer pool. |
 | `prefetch` | Issue OS-specific prefetch hints against the database file to warm the OS page cache for the table's blocks. No windows support for now |
 
+> **Note:** All modes use at most **80% of currently available** buffer pool memory (after subtracting what is already in use). It will automatically limit the number of blocks that can be prewarmed to avoid exhausting the buffer pool or the OS page cache. Consider increasing the `memory_limit` to prewarm more data.
+
 ## Benchmark
 
 ClickBench benchmark results:
