@@ -28,7 +28,7 @@ SELECT prewarm('table_name', 'buffer', 'my_schema');
 |------|-------------|
 | `buffer` | **(Default)** Load blocks into DuckDB's buffer pool with pin/unpin. Blocks stay in the buffer pool until evicted by normal buffer management. |
 | `read` | Synchronously read blocks from disk into temporary process memory. This warms the OS page cache but does not use DuckDB's buffer pool. |
-| `prefetch` | Batch read blocks into the buffer pool using OS-specific prefetch hints. Blocks may be evicted sooner than `buffer` mode. |
+| `prefetch` | Issue OS-specific prefetch hints against the database file to warm the OS page cache for the table's blocks. |
 
 ## Benchmark
 
@@ -175,7 +175,7 @@ git clone --recurse-submodules https://github.com/lxcid/duckdb-cache-prewarm.git
 cd duckdb-cache-prewarm
 
 # Build (with ccache and ninja for faster builds)
-make -j $(nproc)
+make
 
 # Run tests
 make test
