@@ -80,10 +80,9 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 	    [](const shared_ptr<BlockHandle> &a, const shared_ptr<BlockHandle> &b) { return a->BlockId() < b->BlockId(); });
 
 	TaskExecutor executor(context);
-	auto shared_handles = make_shared_ptr<vector<shared_ptr<BlockHandle>>>(unloaded_handles);
 	for (idx_t start = 0; start < unloaded_handles.size(); start += blocks_per_task) {
 		auto count = std::min<idx_t>(blocks_per_task, unloaded_handles.size() - start);
-		auto task = make_uniq<BufferPrefetchTask>(executor, buffer_manager, shared_handles, start, count);
+		auto task = make_uniq<BufferPrefetchTask>(executor, buffer_manager, unloaded_handles, start, count);
 		executor.ScheduleTask(std::move(task));
 	}
 	executor.WorkOnTasks();
