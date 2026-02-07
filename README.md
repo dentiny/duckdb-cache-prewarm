@@ -5,7 +5,7 @@ A DuckDB extension that preloads table data blocks into the buffer pool or OS pa
 ## Installation
 
 ```sql
-INSTALL cache_prewarm FROM community;
+FORCE INSTALL cache_prewarm FROM community;
 LOAD cache_prewarm;
 ```
 
