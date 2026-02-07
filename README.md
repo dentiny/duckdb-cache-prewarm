@@ -1,12 +1,50 @@
 # DuckDB Cache Prewarm
 
-This repository is based on https://github.com/duckdb/extension-template, check it out if you want to build and ship your own DuckDB extension.
+A DuckDB extension that preloads table data blocks into the buffer pool or OS page cache, inspired by PostgreSQL's [`pg_prewarm`](https://www.postgresql.org/docs/current/pgprewarm.html) extension.
 
----
+## Installation
 
-This extension, CachePrewarm, allows you to prewarm the cache of a table by loading the data blocks into the buffer pool.
+```sql
+FORCE INSTALL cache_prewarm FROM community;
+LOAD cache_prewarm;
+```
 
-Now we can use the features from the extension directly in DuckDB. The extension exposes a scalar function `prewarm(table_name [, mode])` that takes a table name (and optional mode) as a string argument and returns an integer block count:
+## Usage
+
+```sql
+-- Basic usage: prewarm a table into DuckDB's buffer pool
+SELECT prewarm('table_name');
+
+-- With explicit mode
+SELECT prewarm('table_name', 'buffer');
+
+-- With schema specification
+SELECT prewarm('table_name', 'buffer', 'my_schema');
+```
+
+## Prewarm Modes
+
+| Mode | Description |
+|------|-------------|
+| `buffer` | **(Default)** Load blocks into DuckDB's buffer pool with pin/unpin. Blocks stay in the buffer pool until evicted by normal buffer management. |
+| `read` | Synchronously read blocks from disk into temporary process memory. This warms the OS page cache but does not use DuckDB's buffer pool. |
+| `prefetch` | Issue OS-specific prefetch hints against the database file to warm the OS page cache for the table's blocks. No windows support for now |
+
+## Benchmark
+
+ClickBench benchmark results:
+
+![ClickBench benchmark performance](docs/img/clickbench_perf.png)
+![ClickBench benchmark prewarm](docs/img/clickbench_prewarm.png)
+
+Memory: 31 GB
+CPU cores: 16
+CPU: AMD EPYC 7282 16-Core Processor
+
+Check `bench/README.md` for details.
+
+## Example
+
 ```sql
 CREATE TABLE events (
     event_id BIGINT,
@@ -67,18 +105,28 @@ SELECT prewarm('events', 'prefetch');
 ├───────────────────────────────┤
 │              24               │
 └───────────────────────────────┘
-
 ```
 
-## TODO
+> **Note:** The returned block count may vary depending on compression and data layout. The count is approximate and for reference only.
 
-- [ ] Support prewarm with block id range
-- [ ] Support prewarm with index name
-- [ ] Table, Index Inspector to see which blocks is belong to which table or index
-- [ ] Prewarm remote tables and files and return numbers of bytes prewarmed instead of numbers of blocks cause remote stuffs don't go into buffer pool
-  - [ ] Try to leverage https://duckdb.org/community_extensions/extensions/cache_httpfs
-- [ ] Autoprewarm, just like what PostgreSQL pg_prewarm extension does
+## When to Use
+
+- **Cold start optimization**: Prewarm frequently accessed tables after database restart
+- **Predictable query latency**: Eliminate first-query cold cache penalties
+- **OS page cache warming**: Use `read` or `prefetch` mode to warm the OS file cache for scenarios where DuckDB's buffer pool is a bottleneck
+
+## Roadmap
+
+- [ ] Support prewarm with block ID range
+- [ ] Support prewarm for indexes
+- [ ] Remote table and file support (leverage `cache_httpfs`)
+- [ ] Autoprewarm (automatic cache warming on startup, similar to pg_prewarm's `autoprewarm`)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## References
-- [pg_prewarm extension](https://www.postgresql.org/docs/current/pgprewarm.html)
-- [pg_prewarm extension implementation](https://github.com/postgres/postgres/tree/master/contrib/pg_prewarm)
+
+- [PostgreSQL pg_prewarm documentation](https://www.postgresql.org/docs/current/pgprewarm.html)
+- [pg_prewarm source code](https://github.com/postgres/postgres/tree/master/contrib/pg_prewarm)
