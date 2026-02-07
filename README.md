@@ -113,13 +113,7 @@ SELECT prewarm('events', 'prefetch');
 
 - **Cold start optimization**: Prewarm frequently accessed tables after database restart
 - **Predictable query latency**: Eliminate first-query cold cache penalties
-- **Batch job preparation**: Warm up tables before running analytics workloads
-- **OS page cache warming**: Use `read` or `prefetch` mode to warm the OS file cache for scenarios where DuckDB's buffer pool is not the bottleneck
-
-## Limitations
-
-- Prewarming requires blocks to be flushed to disk first (use `CHECKPOINT` if needed)
-- Block counts are approximate due to compression and partial blocks
+- **OS page cache warming**: Use `read` or `prefetch` mode to warm the OS file cache for scenarios where DuckDB's buffer pool is a bottleneck
 
 ## Roadmap
 
