@@ -36,6 +36,10 @@ ClickBench benchmark results:
 
 ![ClickBench benchmark results](docs/img/clickbench.png)
 
+Memory: 31 GB
+CPU cores: 16
+CPU: AMD EPYC 7282 16-Core Processor
+
 ```bash
 Query 1: baseline 55.55 ms, buffer mode is 63.0x faster, read mode is 21.1x faster, prefetch mode is 10.2x faster
 Query 2: baseline 143.64 ms, buffer mode is 4.02x faster, read mode is 7.32x faster, prefetch mode is 2.01x slower
