@@ -86,8 +86,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 		                "  Table blocks: %llu\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"
 		                "  Current available memory: %llu bytes, consider increasing memory_limit",
-		                total_blocks, capacity_info.max_blocks, blocks_skipped,
-		                capacity_info.available_memory);
+		                total_blocks, capacity_info.max_blocks, blocks_skipped, capacity_info.available_memory);
 		total_blocks = unloaded_handles.size();
 	}
 
