@@ -19,8 +19,8 @@ public:
 	OSPrefetchTask(TaskExecutor &executor, const string &db_path_p, vector<block_id_t> &sorted_blocks_p,
 	               vector<block_id_t>::const_iterator begin_p, vector<block_id_t>::const_iterator end_p,
 	               idx_t block_size_p, atomic<idx_t> &blocks_prefetched_p)
-	    : BaseExecutorTask(executor), db_path(db_path_p), sorted_blocks(sorted_blocks_p), begin(begin_p),
-	      end(end_p), block_size(block_size_p), blocks_prefetched(blocks_prefetched_p) {
+	    : BaseExecutorTask(executor), db_path(db_path_p), sorted_blocks(sorted_blocks_p), begin(begin_p), end(end_p),
+	      block_size(block_size_p), blocks_prefetched(blocks_prefetched_p) {
 	}
 
 	void ExecuteTask() override {
@@ -63,8 +63,7 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 		                "  Table blocks: %llu\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"
 		                "  Current available memory: %llu bytes, consider increasing memory_limit",
-		                total_blocks, capacity_info.max_blocks, blocks_skipped,
-		                capacity_info.available_memory);
+		                total_blocks, capacity_info.max_blocks, blocks_skipped, capacity_info.available_memory);
 		total_blocks = sorted_blocks.size();
 	}
 
