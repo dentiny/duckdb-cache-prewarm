@@ -16,15 +16,14 @@ constexpr idx_t PREFETCH_CHUNK_SIZE = Storage::SECTOR_SIZE * 128;
 
 class OSPrefetchTask : public BaseExecutorTask {
 public:
-	OSPrefetchTask(TaskExecutor &executor, const string &db_path_p, vector<block_id_t> &sorted_blocks_p,
-	               vector<block_id_t>::const_iterator begin_p, vector<block_id_t>::const_iterator end_p,
+	OSPrefetchTask(TaskExecutor &executor, const string &db_path_p, Span<const block_id_t> block_ids_p,
 	               idx_t block_size_p, atomic<idx_t> &blocks_prefetched_p)
-	    : BaseExecutorTask(executor), db_path(db_path_p), sorted_blocks(sorted_blocks_p), begin(begin_p), end(end_p),
-	      block_size(block_size_p), blocks_prefetched(blocks_prefetched_p) {
+	    : BaseExecutorTask(executor), db_path(db_path_p), block_ids(block_ids_p), block_size(block_size_p),
+	      blocks_prefetched(blocks_prefetched_p) {
 	}
 
 	void ExecuteTask() override {
-		auto count = OSPrefetchBlocks(db_path, begin, end, block_size);
+		auto count = OSPrefetchBlocks(db_path, block_ids, block_size);
 		blocks_prefetched += count;
 	}
 
@@ -34,9 +33,7 @@ public:
 
 private:
 	string db_path;
-	vector<block_id_t> &sorted_blocks;
-	vector<block_id_t>::const_iterator begin;
-	vector<block_id_t>::const_iterator end;
+	Span<const block_id_t> block_ids;
 	idx_t block_size;
 	atomic<idx_t> &blocks_prefetched;
 };
@@ -83,11 +80,9 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 	atomic<idx_t> blocks_prefetched {0};
 
 	for (idx_t start_idx = 0; start_idx < total_blocks; start_idx += blocks_per_task) {
-		auto end_idx = std::min<idx_t>(total_blocks, start_idx + blocks_per_task);
-		auto begin_it = sorted_blocks.begin() + static_cast<ptrdiff_t>(start_idx);
-		auto end_it = sorted_blocks.begin() + static_cast<ptrdiff_t>(end_idx);
-		auto task = make_uniq<OSPrefetchTask>(executor, db_path, sorted_blocks, begin_it, end_it, block_size,
-		                                      blocks_prefetched);
+		auto count = std::min<idx_t>(blocks_per_task, total_blocks - start_idx);
+		Span<const block_id_t> block_ids_span(sorted_blocks.data() + start_idx, count);
+		auto task = make_uniq<OSPrefetchTask>(executor, db_path, block_ids_span, block_size, blocks_prefetched);
 		executor.ScheduleTask(std::move(task));
 	}
 	executor.WorkOnTasks();
