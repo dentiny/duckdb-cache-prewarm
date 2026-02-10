@@ -5,10 +5,10 @@
 namespace duckdb {
 
 //! Prewarm strategy: Read blocks directly from storage (not into buffer pool)
-class ReadPrewarmStrategy : public PrewarmStrategy {
+class ReadPrewarmStrategy : public LocalPrewarmStrategy {
 public:
-	ReadPrewarmStrategy(ClientContext &context, BlockManager &block_manager, BufferManager &buffer_manager)
-	    : PrewarmStrategy(context, block_manager, buffer_manager) {
+	ReadPrewarmStrategy(ClientContext &context_p, BlockManager &block_manager_p, BufferManager &buffer_manager_p)
+	    : LocalPrewarmStrategy(context_p, block_manager_p, buffer_manager_p) {
 	}
 
 	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) override;

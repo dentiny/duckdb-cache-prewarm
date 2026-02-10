@@ -65,7 +65,7 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"
 		                "  Memory: %llu bytes available, %llu bytes required for all unloaded blocks",
 		                total_blocks, already_cached, blocks_to_prewarm, capacity_info.max_blocks, blocks_skipped,
-		                capacity_info.available_memory, blocks_to_prewarm * capacity_info.block_size);
+		                capacity_info.available_space, blocks_to_prewarm * capacity_info.block_size);
 	}
 
 	auto thread_count = std::max(1, TaskScheduler::GetScheduler(context).NumberOfThreads());

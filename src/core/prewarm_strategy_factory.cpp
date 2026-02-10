@@ -11,8 +11,9 @@ namespace duckdb {
 // Strategy Factory
 //===--------------------------------------------------------------------===//
 
-unique_ptr<PrewarmStrategy> CreatePrewarmStrategy(ClientContext &context, PrewarmMode mode, BlockManager &block_manager,
-                                                  BufferManager &buffer_manager) {
+unique_ptr<LocalPrewarmStrategy> CreateLocalPrewarmStrategy(ClientContext &context, PrewarmMode mode,
+                                                            BlockManager &block_manager,
+                                                            BufferManager &buffer_manager) {
 	switch (mode) {
 	case PrewarmMode::BUFFER:
 		return make_uniq<BufferPrewarmStrategy>(context, block_manager, buffer_manager);
