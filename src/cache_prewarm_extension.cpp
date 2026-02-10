@@ -2,6 +2,7 @@
 
 #include "cache_prewarm_extension.hpp"
 #include "functions/prewarm_function.hpp"
+#include "functions/prewarm_remote_function.hpp"
 #include "duckdb.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
 #include "cache_httpfs_extension.hpp"
@@ -33,6 +34,7 @@ void LoadInternal(ExtensionLoader &loader) {
 		extension_active_load->FinishLoad(extension_install_info);
 	}
 	RegisterPrewarmFunction(loader);
+	RegisterPrewarmRemoteFunction(loader);
 }
 
 void CachePrewarmExtension::Load(ExtensionLoader &loader) {
