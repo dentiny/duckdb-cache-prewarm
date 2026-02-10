@@ -16,11 +16,11 @@ struct BufferCapacityInfo {
 	//! Size of each block in bytes
 	idx_t block_size;
 	//! Maximum buffer pool memory
-	idx_t max_memory;
+	idx_t max_capacity;
 	//! Currently used buffer pool memory
-	idx_t used_memory;
+	idx_t used_space;
 	//! Available buffer pool memory (max - used)
-	idx_t available_memory;
+	idx_t available_space;
 	//! Maximum blocks that can be loaded
 	idx_t max_blocks;
 };
@@ -30,8 +30,30 @@ class PrewarmStrategy {
 public:
 	virtual ~PrewarmStrategy() = default;
 
-	PrewarmStrategy(ClientContext &context_p, BlockManager &block_manager_p, BufferManager &buffer_manager_p)
-	    : block_manager(block_manager_p), buffer_manager(buffer_manager_p), context(context_p) {
+	explicit PrewarmStrategy(ClientContext &context_p) : context(context_p) {
+	}
+
+protected:
+	//! Calculate maximum number of blocks that can be loaded based on available buffer pool memory
+	//! Uses 80% of available memory to avoid eviction churn
+	//! Returns comprehensive buffer capacity information
+	virtual BufferCapacityInfo CalculateMaxAvailableBlocks() = 0;
+
+	//! Calculate the number of blocks per parallel task
+	//! @param block_size Size of each block in bytes
+	//! @param max_blocks Maximum number of blocks available
+	//! @param max_threads Maximum number of threads available
+	//! @param target_bytes Target bytes per task for optimal I/O performance
+	//! @return Number of blocks per task (0 if no blocks available)
+	static idx_t CalculateBlocksPerTask(idx_t block_size, idx_t max_blocks, idx_t max_threads, idx_t target_bytes);
+
+	ClientContext &context;
+};
+
+class LocalPrewarmStrategy : public PrewarmStrategy {
+public:
+	LocalPrewarmStrategy(ClientContext &context_p, BlockManager &block_manager_p, BufferManager &buffer_manager_p)
+	    : PrewarmStrategy(context_p), block_manager(block_manager_p), buffer_manager(buffer_manager_p) {
 	}
 
 	//! Execute prewarm operation on the given table and blocks
@@ -45,26 +67,17 @@ protected:
 	//! @param strategy_name The name of the strategy for error messaging
 	void CheckDirectIO(const string &strategy_name);
 
-	//! Calculate maximum number of blocks that can be loaded based on available buffer pool memory
-	//! Uses 80% of available memory to avoid eviction churn
-	//! Returns comprehensive buffer capacity information
-	BufferCapacityInfo CalculateMaxAvailableBlocks();
-
 	//! Register blocks and filter to unloaded ones
 	//! @param block_ids The set of block IDs to register
 	vector<shared_ptr<BlockHandle>> GetUnloadedBlockHandles(const unordered_set<block_id_t> &block_ids);
 
-	//! Calculate the number of blocks per parallel task
-	//! @param block_size Size of each block in bytes
-	//! @param max_blocks Maximum number of blocks available
-	//! @param max_threads Maximum number of threads available
-	//! @param target_bytes Target bytes per task for optimal I/O performance
-	//! @return Number of blocks per task (0 if no blocks available)
-	static idx_t CalculateBlocksPerTask(idx_t block_size, idx_t max_blocks, idx_t max_threads, idx_t target_bytes);
+	//! Calculate maximum number of blocks that can be loaded based on available buffer pool memory
+	//! Uses 80% of available memory to avoid eviction churn
+	//! Returns comprehensive buffer capacity information
+	BufferCapacityInfo CalculateMaxAvailableBlocks() override;
 
 	BlockManager &block_manager;
 	BufferManager &buffer_manager;
-	ClientContext &context;
 };
 
 } // namespace duckdb

@@ -74,7 +74,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 	if (max_batch_size == 0) {
 		DUCKDB_LOG_WARN(context,
 		                "Insufficient memory to prewarm any blocks (available: %llu bytes, block size: %llu bytes)",
-		                capacity_info.available_memory, capacity_info.block_size);
+		                capacity_info.available_space, capacity_info.block_size);
 		return 0;
 	}
 	if (total_blocks > capacity_info.max_blocks) {
@@ -86,7 +86,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 		                "  Table blocks: %llu\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"
 		                "  Current available memory: %llu bytes, consider increasing memory_limit",
-		                total_blocks, capacity_info.max_blocks, blocks_skipped, capacity_info.available_memory);
+		                total_blocks, capacity_info.max_blocks, blocks_skipped, capacity_info.available_space);
 		total_blocks = unloaded_handles.size();
 	}
 

@@ -33,7 +33,7 @@ idx_t OSPrefetchBlocks(const string &db_path, Span<const block_id_t> block_ids, 
 
 	idx_t blocks_prefetched = 0;
 
-	for (block_id_t block_id : block_ids) {
+	for (const auto &block_id : block_ids) {
 		uint64_t offset = GetBlockFileOffset(block_id, block_size);
 
 		// Verify the block offset is within file bounds

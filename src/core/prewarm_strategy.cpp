@@ -13,7 +13,18 @@ namespace {
 constexpr double PREWARM_BUFFER_USAGE_RATIO = 0.8;
 } // namespace
 
-void PrewarmStrategy::CheckDirectIO(const string &strategy_name) {
+idx_t PrewarmStrategy::CalculateBlocksPerTask(idx_t block_size, idx_t max_blocks, idx_t max_threads,
+                                              idx_t target_bytes) {
+	if (max_blocks == 0) {
+		return 0;
+	}
+	auto target_blocks = std::max<idx_t>(1, target_bytes / block_size);
+	auto concurrency = std::max<idx_t>(1, std::min<idx_t>(max_blocks, max_threads));
+	auto max_blocks_per_task = std::max<idx_t>(1, max_blocks / concurrency);
+	return std::min<idx_t>(target_blocks, max_blocks_per_task);
+}
+
+void LocalPrewarmStrategy::CheckDirectIO(const string &strategy_name) {
 	if (context.db->config.options.use_direct_io) {
 		throw InvalidInputException("%s prewarming strategy is not effective when direct I/O is enabled. "
 		                            "Direct I/O bypasses the OS page cache. "
@@ -22,24 +33,25 @@ void PrewarmStrategy::CheckDirectIO(const string &strategy_name) {
 	}
 }
 
-BufferCapacityInfo PrewarmStrategy::CalculateMaxAvailableBlocks() {
+BufferCapacityInfo LocalPrewarmStrategy::CalculateMaxAvailableBlocks() {
 	BufferCapacityInfo info;
 	info.block_size = block_manager.GetBlockAllocSize();
-	info.max_memory = buffer_manager.GetMaxMemory();
-	info.used_memory = buffer_manager.GetUsedMemory();
-	info.available_memory = info.max_memory > info.used_memory ? info.max_memory - info.used_memory : 0;
+	info.max_capacity = buffer_manager.GetMaxMemory();
+	info.used_space = buffer_manager.GetUsedMemory();
+	info.available_space = info.max_capacity > info.used_space ? info.max_capacity - info.used_space : 0;
 
 	// It is possible due to concurrent access for buffer pool
-	D_ASSERT(info.used_memory <= info.max_memory);
+	D_ASSERT(info.used_space <= info.max_capacity);
 
 	// Calculate maximum blocks we can load
-	info.max_blocks = static_cast<idx_t>((static_cast<double>(info.available_memory) * PREWARM_BUFFER_USAGE_RATIO) /
+	info.max_blocks = static_cast<idx_t>((static_cast<double>(info.available_space) * PREWARM_BUFFER_USAGE_RATIO) /
 	                                     static_cast<double>(info.block_size));
 
 	return info;
 }
 
-vector<shared_ptr<BlockHandle>> PrewarmStrategy::GetUnloadedBlockHandles(const unordered_set<block_id_t> &block_ids) {
+vector<shared_ptr<BlockHandle>>
+LocalPrewarmStrategy::GetUnloadedBlockHandles(const unordered_set<block_id_t> &block_ids) {
 	vector<shared_ptr<BlockHandle>> unloaded_handles;
 	unloaded_handles.reserve(block_ids.size());
 	for (block_id_t block_id : block_ids) {
@@ -50,17 +62,6 @@ vector<shared_ptr<BlockHandle>> PrewarmStrategy::GetUnloadedBlockHandles(const u
 	}
 
 	return unloaded_handles;
-}
-
-idx_t PrewarmStrategy::CalculateBlocksPerTask(idx_t block_size, idx_t max_blocks, idx_t max_threads,
-                                              idx_t target_bytes) {
-	if (max_blocks == 0) {
-		return 0;
-	}
-	auto target_blocks = std::max<idx_t>(1, target_bytes / block_size);
-	auto concurrency = std::max<idx_t>(1, std::min<idx_t>(max_blocks, max_threads));
-	auto max_blocks_per_task = std::max<idx_t>(1, max_blocks / concurrency);
-	return std::min<idx_t>(target_blocks, max_blocks_per_task);
 }
 
 } // namespace duckdb

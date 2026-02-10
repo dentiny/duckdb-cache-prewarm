@@ -5,10 +5,10 @@
 namespace duckdb {
 
 //! Prewarm strategy: Load blocks into buffer pool
-class BufferPrewarmStrategy : public PrewarmStrategy {
+class BufferPrewarmStrategy : public LocalPrewarmStrategy {
 public:
-	BufferPrewarmStrategy(ClientContext &context, BlockManager &block_manager, BufferManager &buffer_manager)
-	    : PrewarmStrategy(context, block_manager, buffer_manager) {
+	BufferPrewarmStrategy(ClientContext &context_p, BlockManager &block_manager_p, BufferManager &buffer_manager_p)
+	    : LocalPrewarmStrategy(context_p, block_manager_p, buffer_manager_p) {
 	}
 
 	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) override;
