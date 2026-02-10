@@ -52,8 +52,8 @@ protected:
 
 class LocalPrewarmStrategy : public PrewarmStrategy {
 public:
-	LocalPrewarmStrategy(ClientContext &context_p, BlockManager &block_manager, BufferManager &buffer_manager)
-	    : PrewarmStrategy(context_p), block_manager(block_manager), buffer_manager(buffer_manager) {
+	LocalPrewarmStrategy(ClientContext &context_p, BlockManager &block_manager_p, BufferManager &buffer_manager_p)
+	    : PrewarmStrategy(context_p), block_manager(block_manager_p), buffer_manager(buffer_manager_p) {
 	}
 
 	//! Execute prewarm operation on the given table and blocks
