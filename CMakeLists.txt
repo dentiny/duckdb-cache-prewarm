@@ -9,6 +9,10 @@ set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
 
 project(${TARGET_NAME})
 include_directories(src/include)
+include_directories(duck-read-cache-fs/src/include)
+include_directories(duck-read-cache-fs/src/utils/include)
+include_directories(duck-read-cache-fs/duckdb-httpfs/src/include)
+include_directories(duck-read-cache-fs/duckdb/third_party/httplib)
 
 set(EXTENSION_SOURCES
     src/cache_prewarm_extension.cpp
@@ -19,10 +23,63 @@ set(EXTENSION_SOURCES
     src/core/prewarm_strategy.cpp
     src/core/prewarm_strategy_factory.cpp
     src/core/read_prewarm_strategy.cpp
-    src/functions/prewarm_function.cpp)
+    src/core/remote_block_collector.cpp
+    src/core/remote_prewarm_strategy.cpp
+    src/functions/prewarm_function.cpp
+    src/functions/prewarm_remote_function.cpp
+    # Add necessary duck-read-cache-fs sources for remote prewarming
+    duck-read-cache-fs/src/cache_httpfs_extension.cpp
+    duck-read-cache-fs/src/cache_filesystem_config.cpp
+    duck-read-cache-fs/src/cache_httpfs_instance_state.cpp
+    duck-read-cache-fs/src/cache_filesystem.cpp
+    duck-read-cache-fs/src/cache_entry_info.cpp
+    duck-read-cache-fs/src/base_profile_collector.cpp
+    duck-read-cache-fs/src/noop_profile_collector.cpp
+    duck-read-cache-fs/src/temp_profile_collector.cpp
+    duck-read-cache-fs/src/noop_cache_reader.cpp
+    duck-read-cache-fs/src/in_memory_cache_reader.cpp
+    duck-read-cache-fs/src/disk_cache_reader.cpp
+    duck-read-cache-fs/src/cache_read_chunk.cpp
+    duck-read-cache-fs/src/io_operations.cpp
+    duck-read-cache-fs/src/cache_exclusion_manager.cpp
+    duck-read-cache-fs/src/cache_exclusion_utils.cpp
+    duck-read-cache-fs/src/histogram.cpp
+    duck-read-cache-fs/src/utils/filesystem_utils.cpp
+    duck-read-cache-fs/src/utils/thread_utils.cpp
+    duck-read-cache-fs/src/utils/thread_pool.cpp
+    duck-read-cache-fs/src/utils/chunk_utils.cpp
+    duck-read-cache-fs/src/utils/time_utils.cpp
+    duck-read-cache-fs/src/utils/fake_filesystem.cpp
+    duck-read-cache-fs/src/cache_status_query_function.cpp
+    duck-read-cache-fs/src/extension_config_query_function.cpp
+    duck-read-cache-fs/src/filesystem_status_query_function.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/hash_functions.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/httpfs_extension.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/httpfs.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3fs.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/hffs.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/httpfs_curl_client.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/httpfs_httplib_client.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http_state.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/create_secret_functions.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/crypto.cpp)
 
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
+
+# Find and link OpenSSL and CURL libraries required by httpfs
+find_package(OpenSSL REQUIRED)
+find_package(CURL REQUIRED)
+
+include_directories(${OPENSSL_INCLUDE_DIR})
+target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
+target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
+
+# Link Windows Cryptography API library for certificate loading on Windows
+if(MINGW OR WIN32)
+  target_link_libraries(${EXTENSION_NAME} crypt32)
+  target_link_libraries(${LOADABLE_EXTENSION_NAME} crypt32)
+endif()
 
 if(${BUILD_UNITTESTS})
   add_subdirectory(test/unittest)
