@@ -1,0 +1,290 @@
+# name: test/sql/prewarm_remote.test
+# description: test prewarm_remote function for remote file caching
+# group: [sql]
+
+require cache_prewarm
+
+require parquet
+
+#===--------------------------------------------------------------------===//
+# Test Setup - Configure cache_httpfs
+#===--------------------------------------------------------------------===//
+
+statement ok
+SET cache_httpfs_type='on_disk';
+
+statement ok
+SET cache_httpfs_cache_block_size=1000000;
+
+statement ok
+SET cache_httpfs_cache_directory='/tmp/duckdb_cache_httpfs_cache';
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===//
+# Test Invalid Inputs
+#===--------------------------------------------------------------------===//
+
+# Test 1: NULL pattern returns NULL (standard SQL NULL propagation)
+query I
+SELECT prewarm_remote(NULL);
+----
+NULL
+
+# Test 2: Invalid cache mode should fail
+statement error
+SELECT prewarm_remote('https://test.com/*.parquet', 'invalid_mode');
+----
+Invalid cache mode
+
+# Test 5: Prewarm single remote CSV file (single parameter)
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv');
+----
+1
+
+query I
+SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
+----
+1
+
+# Verify cache status - should be in memory
+query IIIII
+SELECT * FROM cache_httpfs_cache_status_query();
+----
+(no disk cache)	https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv	0	16222	in-mem
+
+# Verify file is cached and can be read
+query I
+SELECT COUNT(*) FROM read_csv_auto('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv');
+----
+251
+
+# Verify cache status - should be in memory-disk cache
+query IIIII
+SELECT * FROM cache_httpfs_cache_status_query();
+----
+(no disk cache)	https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv	0	16222	in-mem
+
+# Clear cache for next test
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+# Test 6: Prewarm with explicit in_mem mode (two parameters)
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'in_mem');
+----
+1
+
+# Verify cache status - should be in memory
+query IIIII
+SELECT * FROM cache_httpfs_cache_status_query();
+----
+(no disk cache)	https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv	0	16222	in-mem
+
+# Clear cache for next test
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+# Prewarm with on_disk mode
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'on_disk');
+----
+1
+
+# Check local cache files.
+# File count = 16KiB / 1MiB = 1
+query I
+SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
+----
+1
+
+# Check cache status - should be cached (in-mem-disk-cache indicates it's in the disk cache reader's memory layer)
+query IIIII
+SELECT * FROM cache_httpfs_cache_status_query();
+----
+(no disk cache)	https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv	0	16222	in-mem-disk-cache
+
+# Clear cache for next test
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===//
+# Test Cache Mode Variations
+#===--------------------------------------------------------------------===//
+
+# Test 7: Case insensitivity of cache modes
+statement ok
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'IN_MEM');
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+statement ok
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'in_memory');
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===//
+# Test with Remote Parquet File
+#===--------------------------------------------------------------------===//
+
+# Test 8: Prewarm remote parquet file
+query I
+SELECT prewarm_remote('https://blobs.duckdb.org/data/taxi_2019_04.parquet') > 0;
+----
+true
+
+# Verify file can be queried
+query I
+SELECT COUNT(*) FROM read_parquet('https://blobs.duckdb.org/data/taxi_2019_04.parquet');
+----
+7433139
+
+# Check that blocks are in cache
+query I
+SELECT COUNT(*) > 0 FROM cache_httpfs_cache_status_query() WHERE remote_filename = 'https://blobs.duckdb.org/data/taxi_2019_04.parquet';
+----
+true
+
+# Clear cache
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===//
+# Test max_blocks Parameter
+#===--------------------------------------------------------------------===//
+
+# Test 9: Prewarm with max_blocks limit (three parameters)
+# The file should have multiple blocks, so limiting should have effect
+query I
+SELECT prewarm_remote('https://blobs.duckdb.org/data/taxi_2019_04.parquet', 'in_mem', 2) > 0;
+----
+true
+
+# Clear cache
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+# Test 10: Prewarm with 0 max_blocks (no limit)
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'in_mem', 0);
+----
+0
+
+# Clear cache
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===//
+# Test Different Function Signatures
+#===--------------------------------------------------------------------===//
+
+# Test 11: Single parameter (uses current cache settings)
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv') > 0;
+----
+true
+
+# Clear cache
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+# Test 12: Two parameters
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'in_mem') > 0;
+----
+true
+
+# Clear cache
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+# Test 13: Three parameters
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'in_mem', 10) > 0;
+----
+true
+
+# Clear cache
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===//
+# Test Multiple Prewarming Calls
+#===--------------------------------------------------------------------===//
+
+# Test 13: Multiple prewarming calls on same file with different modes
+statement ok
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'in_mem');
+
+# Second call should still succeed (idempotent)
+statement ok
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'in_mem');
+
+# Clear cache
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===//
+# Test Integration with Query Execution
+#===--------------------------------------------------------------------===//
+
+# Test 14: Prewarm before query execution
+statement ok
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', 'in_mem');
+
+# Execute query and verify results
+query IIIIII
+SELECT * FROM read_csv_auto('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv') LIMIT 3;
+----
+1	Africa	Lesotho	HYBSE	NULL	2019-03-25
+2	Asia	Kazakhstan	Astana International Financial Centre	AIXK	2018-11-18
+3	Africa	South Africa	ZAR X	ZARX	2018-11-18
+
+# Clear cache
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===//
+# Test with Smaller Block Size
+#===--------------------------------------------------------------------===//
+
+# Test 15: Change block size to create more blocks
+statement ok
+SET cache_httpfs_cache_block_size=256;
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+# Prewarm with smaller blocks - should create multiple blocks
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv') > 0;
+----
+true
+
+# Verify multiple blocks are cached
+query I
+SELECT COUNT(*) > 1 FROM cache_httpfs_cache_status_query() WHERE remote_filename = 'https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv';
+----
+true
+
+# Query should still work with smaller blocks
+query IIIIII
+SELECT * FROM read_csv_auto('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv') LIMIT 2;
+----
+1	Africa	Lesotho	HYBSE	NULL	2019-03-25
+2	Asia	Kazakhstan	Astana International Financial Centre	AIXK	2018-11-18
+
+#===--------------------------------------------------------------------===//
+# Cleanup
+#===--------------------------------------------------------------------===//
+
+# Reset cache settings
+statement ok
+SET cache_httpfs_cache_block_size=1000000;
+
+statement ok
+SELECT cache_httpfs_clear_cache();
