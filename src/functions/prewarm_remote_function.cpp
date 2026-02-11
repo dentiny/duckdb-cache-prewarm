@@ -31,10 +31,7 @@ RemoteCacheMode ParseCacheMode(const Value &mode_val) {
 	if (lower_mode == "on_disk" || lower_mode == "disk") {
 		return RemoteCacheMode::ON_DISK;
 	}
-	if (lower_mode == "both") {
-		return RemoteCacheMode::BOTH;
-	}
-	throw InvalidInputException("Invalid cache mode '%s'. Valid modes are: 'in_mem', 'on_disk', 'both'",
+	throw InvalidInputException("Invalid cache mode '%s'. Valid modes are: 'in_mem', 'on_disk'",
 	                            mode_val.ToString());
 }
 
@@ -71,7 +68,7 @@ static void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vecto
 	}
 
 	// Parse optional max_blocks
-	idx_t max_blocks = 0;
+	idx_t max_blocks = UINT64_MAX;
 	if (args.ColumnCount() > 2) {
 		auto max_blocks_val = args.GetValue(2, 0);
 		if (!max_blocks_val.IsNull()) {

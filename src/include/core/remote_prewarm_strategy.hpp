@@ -25,7 +25,6 @@ namespace duckdb {
 enum class RemoteCacheMode {
 	IN_MEMORY,  //! Use in-memory cache only
 	ON_DISK,    //! Use on-disk cache only
-	BOTH,       //! Use both in-memory and on-disk
 	USE_CURRENT //! Use current cache_httpfs settings
 };
 
