@@ -19,7 +19,7 @@ static void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vecto
 
 	// Validate arguments
 	if (args.ColumnCount() == 0) {
-		throw InvalidInputException("Pattern cannot be NULL");
+		throw InvalidInputException("prewarm_remote requires at least one argument");
 	}
 
 	auto pattern_val = args.GetValue(0, 0);

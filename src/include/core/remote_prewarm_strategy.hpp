@@ -28,7 +28,7 @@ public:
 
 	//! Execute prewarm on remote blocks
 	//! @param blocks Vector of blocks to prewarm
-	//! @param max_blocks Maximum blocks to prewarm (0 = no limit)
+	//! @param max_blocks Maximum blocks to prewarm (use UINT64_MAX / max idx_t value for no limit)
 	//! @return Number of blocks successfully prewarmed
 	virtual idx_t Execute(const unordered_map<string, vector<RemoteBlockInfo>> &file_blocks, idx_t max_blocks);
 

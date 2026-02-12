@@ -16,7 +16,6 @@ using duckdb::RemoteBlockCollector;
 using duckdb::RemoteBlockInfo;
 using duckdb::TestCreatePath;
 
-namespace {} // anonymous namespace
 
 //===--------------------------------------------------------------------===//
 // RemoteBlockCollector Tests with Mocks
@@ -170,9 +169,6 @@ TEST_CASE("CollectRemoteBlocks - Empty File (Mock)", "[remote_block_collector]")
 // Integration Tests with Real FileSystem
 //===--------------------------------------------------------------------===//
 
-//===--------------------------------------------------------------------===//
-// Integration Tests with Real FileSystem
-//===--------------------------------------------------------------------===//
 
 TEST_CASE("CollectRemoteBlocks - Real Empty Pattern", "[remote_block_collector]") {
 	DuckDB db(nullptr);

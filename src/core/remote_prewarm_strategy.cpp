@@ -2,7 +2,7 @@
 
 #include "core/prewarm_strategy.hpp"
 #include "duckdb/common/unordered_map.hpp"
-#include "scope_guard.hpp"
+
 
 #include "duckdb/logging/logger.hpp"
 #include "duckdb/main/database.hpp"
@@ -38,7 +38,7 @@ BufferCapacityInfo RemotePrewarmStrategy::CalculateMaxAvailableBlocks() {
 }
 
 idx_t RemotePrewarmStrategy::Execute(const unordered_map<string, vector<RemoteBlockInfo>> &file_blocks,
-                                     idx_t max_blocks = UINT64_MAX) {
+                                     idx_t max_blocks) {
 	if (file_blocks.empty()) {
 		return 0;
 	}
@@ -57,13 +57,14 @@ idx_t RemotePrewarmStrategy::Execute(const unordered_map<string, vector<RemoteBl
 
 	if (blocks_to_prewarm < total_uncached_blocks) {
 		idx_t blocks_skipped = total_uncached_blocks - blocks_to_prewarm;
-		total_uncached_blocks = blocks_to_prewarm;
+		
 		DUCKDB_LOG_WARN(context,
 		                "Cache capacity limit reached.\n"
 		                "  Total blocks: %llu (%llu already cached, %llu uncached)\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to capacity)",
 		                total_blocks, total_blocks - total_uncached_blocks, total_uncached_blocks, blocks_to_prewarm,
 		                blocks_skipped);
+        total_uncached_blocks = blocks_to_prewarm;
 	}
 
 	unordered_map<string, unique_ptr<FileHandle>> file_handles;
