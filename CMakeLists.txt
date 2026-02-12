@@ -62,13 +62,13 @@ set(EXTENSION_SOURCES
     duck-read-cache-fs/duckdb-httpfs/src/create_secret_functions.cpp
     duck-read-cache-fs/duckdb-httpfs/src/crypto.cpp)
 
-build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
-build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
-
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 
 include_directories(${OPENSSL_INCLUDE_DIR})
+
+build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
+build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
 target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
 
