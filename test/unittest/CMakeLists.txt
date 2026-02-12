@@ -16,3 +16,7 @@ if(NOT WIN32
 else()
   target_link_libraries(unittest_cache_prewarm test_helpers duckdb_static)
 endif()
+
+set_target_properties(
+  unittest_cache_prewarm PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                    "${CMAKE_BINARY_DIR}/test")
