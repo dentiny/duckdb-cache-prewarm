@@ -1,0 +1,51 @@
+# name: test/sql/extension_load.test
+# description: test cache_prewarm extension loads successfully and integrates with cache_httpfs
+# group: [sql]
+
+# Before loading the extension, cache_httpfs functions should not be available
+statement error
+SELECT cache_httpfs_get_ondisk_data_cache_size();
+----
+Catalog Error: Scalar Function with name cache_httpfs_get_ondisk_data_cache_size does not exist!
+
+# Load the cache_prewarm extension
+require cache_prewarm
+
+# Verify cache_prewarm extension is loaded
+query I
+SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'cache_prewarm' AND loaded = true;
+----
+1
+
+# Verify cache_httpfs extension is also loaded (integrated automatically)
+query I
+SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'cache_httpfs' AND loaded = true;
+----
+1
+
+# Verify all registered filesystems are available
+query I
+SELECT * FROM cache_httpfs_list_registered_filesystems() ORDER BY 1;
+----
+cache_httpfs_HTTPFileSystem
+cache_httpfs_HuggingFaceFileSystem
+cache_httpfs_S3FileSystem
+cache_httpfs_fake_filesystem
+
+# Verify cache filesystems are available
+query I
+SELECT * FROM cache_httpfs_get_cache_filesystems() ORDER BY wrapped_filesystems;
+----
+HTTPFileSystem
+HuggingFaceFileSystem
+S3FileSystem
+
+# Verify cache_httpfs functions are available and working
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+query I
+SELECT cache_httpfs_get_ondisk_data_cache_size();
+----
+0
+
