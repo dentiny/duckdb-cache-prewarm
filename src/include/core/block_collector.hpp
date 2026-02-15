@@ -16,7 +16,7 @@ namespace duckdb {
 class BlockCollector {
 public:
 	//! Collect block IDs from a table entry and return them
-	static unordered_set<block_id_t> CollectTableBlocks(DuckTableEntry &table_entry);
+	static unordered_set<block_id_t> CollectTableBlocks(ClientContext &context, DuckTableEntry &table_entry);
 };
 
 } // namespace duckdb
