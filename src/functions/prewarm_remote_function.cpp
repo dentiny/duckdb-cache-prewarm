@@ -13,6 +13,7 @@ namespace duckdb {
 //===--------------------------------------------------------------------===//
 // Prewarm Remote Scalar Function Implementation
 //===--------------------------------------------------------------------===//
+namespace {
 
 static void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &result) {
 	auto &context = state.GetContext();
@@ -59,6 +60,8 @@ static void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vecto
 	auto result_data = ConstantVector::GetData<int64_t>(result);
 	result_data[0] = NumericCast<int64_t>(blocks_prewarmed);
 }
+
+} // namespace
 
 //===--------------------------------------------------------------------===//
 // Function Registration

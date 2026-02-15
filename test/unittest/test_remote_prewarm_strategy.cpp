@@ -10,8 +10,8 @@
 #include <fstream>
 #include <cstring>
 
-using duckdb::Connection;
-using duckdb::DuckDB;
+using namespace duckdb; // NOLINT
+
 using duckdb::MockFileHandle;
 using duckdb::MockFileSystem;
 using duckdb::RemoteBlockInfo;

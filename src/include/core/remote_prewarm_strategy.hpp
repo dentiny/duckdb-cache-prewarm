@@ -13,9 +13,6 @@ namespace duckdb {
 class FileSystem;
 class FileHandle;
 struct CacheHttpfsInstanceState;
-} // namespace duckdb
-
-namespace duckdb {
 
 //===--------------------------------------------------------------------===//
 // Remote Prewarm Strategy
@@ -32,15 +29,15 @@ public:
 	//! @return Number of blocks successfully prewarmed
 	virtual idx_t Execute(const unordered_map<string, vector<RemoteBlockInfo>> &file_blocks, idx_t max_blocks);
 
-	//! Make FilterCachedBlocks virtual for testing
+	//! Filter out cached blocks from the given file path and blocks
 	virtual vector<RemoteBlockInfo> FilterCachedBlocks(const string &file_path, const vector<RemoteBlockInfo> &blocks);
 
-	//! Make CalculateMaxAvailableBlocks virtual for testing
-	virtual BufferCapacityInfo CalculateMaxAvailableBlocks();
+	//! Calculate maximum number of blocks that can be loaded based on available cache filesystem's capacity
+	BufferCapacityInfo CalculateMaxAvailableBlocks() override;
 
 protected:
-	//! Get cache filesystem (virtual for testing)
-	virtual FileSystem *GetCacheFileSystem();
+	//! Get cache filesystem
+	virtual FileSystem &GetCacheFileSystem();
 
 	ClientContext &context;
 	FileSystem &fs;

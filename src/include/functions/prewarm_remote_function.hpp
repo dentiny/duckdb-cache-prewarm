@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cache_prewarm_extension.hpp"
+#include "duckdb/main/extension/extension_loader.hpp"
 
 namespace duckdb {
 

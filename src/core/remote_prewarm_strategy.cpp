@@ -3,7 +3,6 @@
 #include "core/prewarm_strategy.hpp"
 #include "duckdb/common/unordered_map.hpp"
 
-
 #include "duckdb/logging/logger.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
@@ -15,9 +14,9 @@ RemotePrewarmStrategy::RemotePrewarmStrategy(ClientContext &context_p, FileSyste
     : PrewarmStrategy(context_p), context(context_p), fs(fs_p) {
 }
 
-FileSystem *RemotePrewarmStrategy::GetCacheFileSystem() {
+FileSystem &RemotePrewarmStrategy::GetCacheFileSystem() {
 	// TODO: get CacheFileSystem once we integrate with cache_httpfs
-	return &fs;
+	return fs;
 }
 
 vector<RemoteBlockInfo> RemotePrewarmStrategy::FilterCachedBlocks(const string &file_path,
@@ -57,19 +56,19 @@ idx_t RemotePrewarmStrategy::Execute(const unordered_map<string, vector<RemoteBl
 
 	if (blocks_to_prewarm < total_uncached_blocks) {
 		idx_t blocks_skipped = total_uncached_blocks - blocks_to_prewarm;
-		
+
 		DUCKDB_LOG_WARN(context,
 		                "Cache capacity limit reached.\n"
 		                "  Total blocks: %llu (%llu already cached, %llu uncached)\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to capacity)",
 		                total_blocks, total_blocks - total_uncached_blocks, total_uncached_blocks, blocks_to_prewarm,
 		                blocks_skipped);
-        total_uncached_blocks = blocks_to_prewarm;
+		total_uncached_blocks = blocks_to_prewarm;
 	}
 
 	unordered_map<string, unique_ptr<FileHandle>> file_handles;
 	for (auto &blocks : file_blocks) {
-		auto file_handle = GetCacheFileSystem()->OpenFile(blocks.first, FileOpenFlags::FILE_FLAGS_READ);
+		auto file_handle = GetCacheFileSystem().OpenFile(blocks.first, FileOpenFlags::FILE_FLAGS_READ);
 		file_handles[blocks.first] = std::move(file_handle);
 	}
 

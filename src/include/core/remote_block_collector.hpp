@@ -43,7 +43,7 @@ public:
 	//! @param fs File system to use for file operations
 	//! @param pattern Glob pattern of file path
 	//! @param block_size Size of each block (from cache_httpfs config)
-	//! @return Vector of remote blocks to prewarm
+	//! @return Map of file paths to vector of remote blocks to prewarm
 	static unordered_map<string, vector<RemoteBlockInfo>> CollectRemoteBlocks(FileSystem &fs, const string &pattern,
 	                                                                          idx_t block_size);
 };

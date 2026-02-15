@@ -9,17 +9,11 @@
 
 #include <fstream>
 
-using duckdb::Connection;
-using duckdb::DuckDB;
+using namespace duckdb; // NOLINT
+
 using duckdb::MockFileSystem;
 using duckdb::RemoteBlockCollector;
-using duckdb::RemoteBlockInfo;
 using duckdb::TestCreatePath;
-
-
-//===--------------------------------------------------------------------===//
-// RemoteBlockCollector Tests with Mocks
-//===--------------------------------------------------------------------===//
 
 TEST_CASE("CollectRemoteBlocks - Empty Pattern (Mock)", "[remote_block_collector]") {
 	MockFileSystem mock_fs;
@@ -44,7 +38,7 @@ TEST_CASE("CollectRemoteBlocks - Empty Pattern (Mock)", "[remote_block_collector
 TEST_CASE("CollectRemoteBlocks - Single File (Mock)", "[remote_block_collector]") {
 	MockFileSystem mock_fs;
 
-	const duckdb::string file_path = "/tmp/test_file.parquet";
+	const string file_path = "/tmp/test_file.parquet";
 	const duckdb::idx_t file_size = 1024;
 
 	// Configure mock filesystem
@@ -168,7 +162,6 @@ TEST_CASE("CollectRemoteBlocks - Empty File (Mock)", "[remote_block_collector]")
 //===--------------------------------------------------------------------===//
 // Integration Tests with Real FileSystem
 //===--------------------------------------------------------------------===//
-
 
 TEST_CASE("CollectRemoteBlocks - Real Empty Pattern", "[remote_block_collector]") {
 	DuckDB db(nullptr);
