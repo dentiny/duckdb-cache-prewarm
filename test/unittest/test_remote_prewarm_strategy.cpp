@@ -4,11 +4,8 @@
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/database.hpp"
-#include "test_helpers.hpp"
 #include "mock_filesystem.hpp"
-
-#include <fstream>
-#include <cstring>
+#include "test_helpers.hpp"
 
 using namespace duckdb; // NOLINT
 
@@ -362,12 +359,12 @@ TEST_CASE("RemotePrewarmStrategy - Real Execute Single Block", "[remote_prewarm_
 
 	// Create a temporary file for testing
 	auto temp_file = TestCreatePath("test_file.parquet");
-	const char *test_data = "test data";
-	duckdb::idx_t file_size = strlen(test_data);
+	const duckdb::string test_data = "test data";
+	duckdb::idx_t file_size = test_data.size();
 	{
-		std::ofstream outfile(temp_file);
-		outfile << test_data;
-		outfile.close();
+		auto handle = fs.OpenFile(temp_file, duckdb::FileOpenFlags::FILE_FLAGS_WRITE |
+		                                         duckdb::FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		handle->Write(const_cast<char *>(test_data.c_str()), file_size);
 	}
 
 	// Create block info with correct file size

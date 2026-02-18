@@ -4,10 +4,8 @@
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/database.hpp"
-#include "test_helpers.hpp"
 #include "mock_filesystem.hpp"
-
-#include <fstream>
+#include "test_helpers.hpp"
 
 using namespace duckdb; // NOLINT
 
@@ -182,9 +180,10 @@ TEST_CASE("CollectRemoteBlocks - Real Single File", "[remote_block_collector]") 
 	// Create a temporary file
 	auto temp_file = TestCreatePath("test_file.parquet");
 	{
-		std::ofstream outfile(temp_file);
-		outfile << "test data";
-		outfile.close();
+		const duckdb::string test_data = "test data";
+		auto handle = fs.OpenFile(temp_file, duckdb::FileOpenFlags::FILE_FLAGS_WRITE |
+		                                         duckdb::FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		handle->Write(const_cast<char *>(test_data.c_str()), test_data.size());
 	}
 
 	// Test with a pattern that matches the file
@@ -215,13 +214,15 @@ TEST_CASE("CollectRemoteBlocks - Real Multiple Files", "[remote_block_collector]
 	auto file2 = fs.JoinPath(temp_dir, "file2.parquet");
 
 	{
-		std::ofstream outfile1(file1);
-		outfile1 << "test data 1";
-		outfile1.close();
+		const duckdb::string data1 = "test data 1";
+		auto handle1 = fs.OpenFile(file1, duckdb::FileOpenFlags::FILE_FLAGS_WRITE |
+		                                      duckdb::FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		handle1->Write(const_cast<char *>(data1.c_str()), data1.size());
 
-		std::ofstream outfile2(file2);
-		outfile2 << "test data 2";
-		outfile2.close();
+		const duckdb::string data2 = "test data 2";
+		auto handle2 = fs.OpenFile(file2, duckdb::FileOpenFlags::FILE_FLAGS_WRITE |
+		                                      duckdb::FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		handle2->Write(const_cast<char *>(data2.c_str()), data2.size());
 	}
 
 	// Test with a pattern that matches both files
