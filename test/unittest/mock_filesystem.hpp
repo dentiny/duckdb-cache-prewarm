@@ -6,8 +6,6 @@
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/common/optional_ptr.hpp"
 
-#include <memory>
-
 namespace duckdb {
 
 //===--------------------------------------------------------------------===//
@@ -84,7 +82,7 @@ public:
 	//! Mock implementation of OpenFile
 	unique_ptr<FileHandle> OpenFile(const string &path, FileOpenFlags flags,
 	                                optional_ptr<FileOpener> opener = nullptr) override {
-		lock_guard<mutex> open_lock(open_mutex);
+		lock_guard<mutex> lock(mutex_);
 		open_file_calls.emplace_back(path, flags);
 
 		// Return configured file handle or create default
@@ -99,7 +97,7 @@ public:
 
 	//! Mock implementation of Glob
 	vector<OpenFileInfo> Glob(const string &path, FileOpener *opener = nullptr) override {
-		lock_guard<mutex> glob_lock(glob_mutex);
+		lock_guard<mutex> lock(mutex_);
 		glob_calls.emplace_back(path);
 
 		// Return configured results or empty vector
@@ -128,7 +126,7 @@ public:
 		if (mock_handle) {
 			// Record the read call in the filesystem (thread-safe)
 			{
-				lock_guard<mutex> read_lock(read_mutex);
+				lock_guard<mutex> lock(mutex_);
 				read_calls.emplace_back(handle.path, static_cast<idx_t>(nr_bytes), location);
 			}
 
@@ -145,43 +143,43 @@ public:
 
 	//! Configure glob results for a pattern
 	void ConfigureGlobResults(const string &pattern, const vector<string> &results) {
-		lock_guard<mutex> glob_lock(glob_mutex);
+		lock_guard<mutex> lock(mutex_);
 		configured_glob_results[pattern] = results;
 	}
 
 	//! Configure file size for a path
 	void ConfigureFileSize(const string &path, idx_t size) {
-		lock_guard<mutex> open_lock(open_mutex);
+		lock_guard<mutex> lock(mutex_);
 		configured_file_sizes[path] = size;
 	}
 
 	//! Get number of OpenFile() calls
 	idx_t GetOpenFileCallCount() const {
-		lock_guard<mutex> open_lock(open_mutex);
+		lock_guard<mutex> lock(mutex_);
 		return open_file_calls.size();
 	}
 
 	//! Get all OpenFile() calls
 	vector<OpenFileCall> GetOpenFileCalls() const {
-		lock_guard<mutex> open_lock(open_mutex);
+		lock_guard<mutex> lock(mutex_);
 		return open_file_calls;
 	}
 
 	//! Get number of Glob() calls
 	idx_t GetGlobCallCount() const {
-		lock_guard<mutex> glob_lock(glob_mutex);
+		lock_guard<mutex> lock(mutex_);
 		return glob_calls.size();
 	}
 
 	//! Get all Glob() calls
 	vector<GlobCall> GetGlobCalls() const {
-		lock_guard<mutex> glob_lock(glob_mutex);
+		lock_guard<mutex> lock(mutex_);
 		return glob_calls;
 	}
 
 	//! Get number of Read() calls for a specific file path
 	idx_t GetReadCallCount(const string &path) const {
-		lock_guard<mutex> read_lock(read_mutex);
+		lock_guard<mutex> lock(mutex_);
 		idx_t count = 0;
 		for (const auto &call : read_calls) {
 			if (call.path == path) {
@@ -193,7 +191,7 @@ public:
 
 	//! Get all Read() calls for a specific file path
 	vector<ReadCall> GetReadCalls(const string &path) const {
-		lock_guard<mutex> read_lock(read_mutex);
+		lock_guard<mutex> lock(mutex_);
 		vector<ReadCall> result;
 		for (const auto &call : read_calls) {
 			if (call.path == path) {
@@ -205,15 +203,13 @@ public:
 
 	//! Get total number of Read() calls across all files
 	idx_t GetTotalReadCallCount() const {
-		lock_guard<mutex> read_lock(read_mutex);
+		lock_guard<mutex> lock(mutex_);
 		return read_calls.size();
 	}
 
 	//! Reset all call tracking
 	void Reset() {
-		lock_guard<mutex> open_lock(open_mutex);
-		lock_guard<mutex> glob_lock(glob_mutex);
-		lock_guard<mutex> read_lock(read_mutex);
+		lock_guard<mutex> lock(mutex_);
 		open_file_calls.clear();
 		glob_calls.clear();
 		read_calls.clear();
@@ -265,9 +261,7 @@ public:
 	}
 
 private:
-	mutable mutex open_mutex;
-	mutable mutex glob_mutex;
-	mutable mutex read_mutex;
+	mutable mutex mutex_;
 
 	vector<OpenFileCall> open_file_calls;
 	vector<GlobCall> glob_calls;
