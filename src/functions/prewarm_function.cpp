@@ -85,7 +85,7 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	auto &duck_table = table_catalog_entry.Cast<DuckTableEntry>();
 
 	// Collect all blocks from the table using BlockCollector
-	unordered_set<block_id_t> block_ids = BlockCollector::CollectTableBlocks(duck_table);
+	unordered_set<block_id_t> block_ids = BlockCollector::CollectTableBlocks(context, duck_table);
 
 	// Execute prewarm using the appropriate strategy
 	idx_t blocks_prewarmed = 0;
