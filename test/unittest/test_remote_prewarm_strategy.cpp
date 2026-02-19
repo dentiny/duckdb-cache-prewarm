@@ -4,7 +4,7 @@
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/database.hpp"
-#include "mock_filesystem.hpp"
+#include "prewarm_mock_filesystem.hpp"
 #include "test_helpers.hpp"
 
 using namespace duckdb; // NOLINT
