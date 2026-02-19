@@ -23,6 +23,10 @@ set(EXTENSION_SOURCES
     src/core/prewarm_strategy.cpp
     src/core/prewarm_strategy_factory.cpp
     src/core/read_prewarm_strategy.cpp
+    src/core/remote_block_collector.cpp
+    src/core/remote_prewarm_strategy.cpp
+    src/functions/prewarm_function.cpp
+    src/functions/prewarm_remote_function.cpp
     src/functions/prewarm_function.cpp
 
     # duck-read-cache-fs sources

@@ -44,7 +44,7 @@ PrewarmMode ParsePrewarmMode(const Value &mode_val) {
 	                            mode_val.ToString());
 }
 
-} // anonymous namespace
+} // namespace
 
 //===--------------------------------------------------------------------===//
 // Prewarm Scalar Function Implementation
