@@ -2,7 +2,6 @@
 
 #include "core/prewarm_strategy.hpp"
 #include "duckdb/common/unordered_map.hpp"
-
 #include "duckdb/logging/logger.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
@@ -85,6 +84,7 @@ idx_t RemotePrewarmStrategy::Execute(const unordered_map<string, vector<RemoteBl
 			auto future = std::async(std::launch::async, [this, block, file_handle]() {
 				// TODO: add a easy buffer pool to reuse the buffer
 				auto buffer = unique_ptr<char[]>(new char[block.size]);
+				// we only care about on-disk cache file, but not return value
 				file_handle->Read(buffer.get(), block.size, block.offset);
 			});
 			prewarm_futures.emplace_back(std::move(future));

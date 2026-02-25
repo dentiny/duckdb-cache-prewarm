@@ -15,7 +15,7 @@ namespace duckdb {
 //===--------------------------------------------------------------------===//
 namespace {
 
-static void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &result) {
+void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &result) {
 	auto &context = state.GetContext();
 
 	// Validate arguments
