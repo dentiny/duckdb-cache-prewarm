@@ -9,12 +9,6 @@
 
 using namespace duckdb; // NOLINT
 
-using duckdb::MockFileHandle;
-using duckdb::MockFileSystem;
-using duckdb::RemoteBlockInfo;
-using duckdb::RemotePrewarmStrategy;
-using duckdb::TestCreatePath;
-
 namespace {
 
 //===--------------------------------------------------------------------===//
@@ -24,14 +18,14 @@ namespace {
 //! Mock strategy to test protected methods
 class MockRemotePrewarmStrategy : public RemotePrewarmStrategy {
 public:
-	MockRemotePrewarmStrategy(duckdb::ClientContext &context, duckdb::FileSystem &fs)
+	MockRemotePrewarmStrategy(ClientContext &context, FileSystem &fs)
 	    : RemotePrewarmStrategy(context, fs), filter_cached_call_count(0), calculate_capacity_call_count(0),
 	      capacity_configured(false) {
 	}
 
 	//! Override FilterCachedBlocks to track calls
-	duckdb::vector<RemoteBlockInfo> FilterCachedBlocks(const duckdb::string &file_path,
-	                                                   const duckdb::vector<RemoteBlockInfo> &blocks) override {
+	vector<RemoteBlockInfo> FilterCachedBlocks(const string &file_path,
+	                                                   const vector<RemoteBlockInfo> &blocks) override {
 		filter_cached_call_count++;
 		filter_cached_calls.emplace_back(file_path, blocks.size());
 		// Return all blocks (simulate none are cached)
@@ -39,7 +33,7 @@ public:
 	}
 
 	//! Override CalculateMaxAvailableBlocks to track calls
-	duckdb::BufferCapacityInfo CalculateMaxAvailableBlocks() override {
+	BufferCapacityInfo CalculateMaxAvailableBlocks() override {
 		calculate_capacity_call_count++;
 		// Return configured capacity or default
 		if (capacity_configured) {
@@ -49,39 +43,39 @@ public:
 	}
 
 	//! Configure capacity for testing
-	void ConfigureCapacity(duckdb::BufferCapacityInfo capacity) {
+	void ConfigureCapacity(BufferCapacityInfo capacity) {
 		configured_capacity = capacity;
 		capacity_configured = true;
 	}
 
 	//! Get number of FilterCachedBlocks calls
-	duckdb::idx_t GetFilterCachedCallCount() const {
+	idx_t GetFilterCachedCallCount() const {
 		return filter_cached_call_count;
 	}
 
 	//! Get number of CalculateMaxAvailableBlocks calls
-	duckdb::idx_t GetCalculateCapacityCallCount() const {
+	idx_t GetCalculateCapacityCallCount() const {
 		return calculate_capacity_call_count;
 	}
 
 	//! Get FilterCachedBlocks call details
 	struct FilterCachedCall {
-		duckdb::string file_path;
-		duckdb::idx_t block_count;
-		FilterCachedCall(duckdb::string path, duckdb::idx_t count) : file_path(std::move(path)), block_count(count) {
+		string file_path;
+		idx_t block_count;
+		FilterCachedCall(string path, idx_t count) : file_path(std::move(path)), block_count(count) {
 		}
 	};
 
-	const duckdb::vector<FilterCachedCall> &GetFilterCachedCalls() const {
+	const vector<FilterCachedCall> &GetFilterCachedCalls() const {
 		return filter_cached_calls;
 	}
 
 private:
-	duckdb::idx_t filter_cached_call_count;
-	duckdb::idx_t calculate_capacity_call_count;
-	duckdb::vector<FilterCachedCall> filter_cached_calls;
+	idx_t filter_cached_call_count;
+	idx_t calculate_capacity_call_count;
+	vector<FilterCachedCall> filter_cached_calls;
 	bool capacity_configured;
-	duckdb::BufferCapacityInfo configured_capacity;
+	BufferCapacityInfo configured_capacity;
 };
 
 } // anonymous namespace
@@ -97,7 +91,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Empty Blocks (Mock)", "[remote_prewar
 	MockFileSystem mock_fs;
 
 	MockRemotePrewarmStrategy strategy(context, mock_fs);
-	duckdb::unordered_map<duckdb::string, duckdb::vector<RemoteBlockInfo>> empty_blocks;
+	unordered_map<string, vector<RemoteBlockInfo>> empty_blocks;
 
 	auto result = strategy.Execute(empty_blocks, 0);
 
@@ -119,17 +113,17 @@ TEST_CASE("RemotePrewarmStrategy - Execute Single Block (Mock)", "[remote_prewar
 
 	MockRemotePrewarmStrategy strategy(context, mock_fs);
 
-	const duckdb::string file_path = "/tmp/test_file.parquet";
-	const duckdb::idx_t block_size = 1024;
+	const string file_path = "/tmp/test_file.parquet";
+	const idx_t block_size = 1024;
 
 	// Configure mock filesystem
 	mock_fs.ConfigureFileSize(file_path, block_size);
 
 	// Create block info
-	duckdb::vector<RemoteBlockInfo> blocks;
+	vector<RemoteBlockInfo> blocks;
 	blocks.emplace_back(file_path, 0, static_cast<int64_t>(block_size), block_size);
 
-	duckdb::unordered_map<duckdb::string, duckdb::vector<RemoteBlockInfo>> file_blocks;
+	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
 	file_blocks[file_path] = blocks;
 
 	auto result = strategy.Execute(file_blocks, 100);
@@ -165,20 +159,20 @@ TEST_CASE("RemotePrewarmStrategy - Execute Multiple Blocks Same File (Mock)", "[
 
 	MockRemotePrewarmStrategy strategy(context, mock_fs);
 
-	const duckdb::string file_path = "/tmp/test_file.parquet";
-	const duckdb::idx_t block_size = 1024;
-	const duckdb::idx_t num_blocks = 3;
+	const string file_path = "/tmp/test_file.parquet";
+	const idx_t block_size = 1024;
+	const idx_t num_blocks = 3;
 
 	// Configure mock filesystem
 	mock_fs.ConfigureFileSize(file_path, block_size * num_blocks);
 
 	// Create multiple blocks
-	duckdb::vector<RemoteBlockInfo> blocks;
-	for (duckdb::idx_t i = 0; i < num_blocks; i++) {
+	vector<RemoteBlockInfo> blocks;
+	for (idx_t i = 0; i < num_blocks; i++) {
 		blocks.emplace_back(file_path, i * block_size, static_cast<int64_t>(block_size), block_size * num_blocks);
 	}
 
-	duckdb::unordered_map<duckdb::string, duckdb::vector<RemoteBlockInfo>> file_blocks;
+	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
 	file_blocks[file_path] = blocks;
 
 	auto result = strategy.Execute(file_blocks, 1000);
@@ -192,7 +186,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Multiple Blocks Same File (Mock)", "[
 	REQUIRE(mock_fs.GetReadCallCount(file_path) == num_blocks);
 
 	auto read_calls = mock_fs.GetReadCalls(file_path);
-	for (duckdb::idx_t i = 0; i < num_blocks; i++) {
+	for (idx_t i = 0; i < num_blocks; i++) {
 		REQUIRE(read_calls[i].offset == i * block_size);
 		REQUIRE(read_calls[i].size == block_size);
 	}
@@ -209,24 +203,24 @@ TEST_CASE("RemotePrewarmStrategy - Execute Multiple Files (Mock)", "[remote_prew
 
 	MockRemotePrewarmStrategy strategy(context, mock_fs);
 
-	const duckdb::string file1 = "/tmp/file1.parquet";
-	const duckdb::string file2 = "/tmp/file2.parquet";
-	const duckdb::idx_t block_size = 1024;
+	const string file1 = "/tmp/file1.parquet";
+	const string file2 = "/tmp/file2.parquet";
+	const idx_t block_size = 1024;
 
 	// Configure mock filesystem
 	mock_fs.ConfigureFileSize(file1, block_size);
 	mock_fs.ConfigureFileSize(file2, block_size * 2);
 
 	// Create blocks for file1
-	duckdb::vector<RemoteBlockInfo> blocks1;
+	vector<RemoteBlockInfo> blocks1;
 	blocks1.emplace_back(file1, 0, static_cast<int64_t>(block_size), block_size);
 
 	// Create blocks for file2
-	duckdb::vector<RemoteBlockInfo> blocks2;
+	vector<RemoteBlockInfo> blocks2;
 	blocks2.emplace_back(file2, 0, static_cast<int64_t>(block_size), block_size * 2);
 	blocks2.emplace_back(file2, block_size, static_cast<int64_t>(block_size), block_size * 2);
 
-	duckdb::unordered_map<duckdb::string, duckdb::vector<RemoteBlockInfo>> file_blocks;
+	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
 	file_blocks[file1] = blocks1;
 	file_blocks[file2] = blocks2;
 
@@ -256,21 +250,21 @@ TEST_CASE("RemotePrewarmStrategy - Execute with Max Blocks Limit (Mock)", "[remo
 
 	MockRemotePrewarmStrategy strategy(context, mock_fs);
 
-	const duckdb::string file_path = "/tmp/test_file.parquet";
-	const duckdb::idx_t block_size = 1024;
-	const duckdb::idx_t num_blocks = 10;
-	const duckdb::idx_t max_blocks = 5;
+	const string file_path = "/tmp/test_file.parquet";
+	const idx_t block_size = 1024;
+	const idx_t num_blocks = 10;
+	const idx_t max_blocks = 5;
 
 	// Configure mock filesystem
 	mock_fs.ConfigureFileSize(file_path, block_size * num_blocks);
 
 	// Create multiple blocks
-	duckdb::vector<RemoteBlockInfo> blocks;
-	for (duckdb::idx_t i = 0; i < num_blocks; i++) {
+	vector<RemoteBlockInfo> blocks;
+	for (idx_t i = 0; i < num_blocks; i++) {
 		blocks.emplace_back(file_path, i * block_size, static_cast<int64_t>(block_size), block_size * num_blocks);
 	}
 
-	duckdb::unordered_map<duckdb::string, duckdb::vector<RemoteBlockInfo>> file_blocks;
+	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
 	file_blocks[file_path] = blocks;
 
 	// Execute with max_blocks limit
@@ -294,13 +288,13 @@ TEST_CASE("RemotePrewarmStrategy - Execute with Capacity Limit (Mock)", "[remote
 
 	MockRemotePrewarmStrategy strategy(context, mock_fs);
 
-	const duckdb::string file_path = "/tmp/test_file.parquet";
-	const duckdb::idx_t block_size = 1024;
-	const duckdb::idx_t num_blocks = 10;
-	const duckdb::idx_t capacity_limit = 3;
+	const string file_path = "/tmp/test_file.parquet";
+	const idx_t block_size = 1024;
+	const idx_t num_blocks = 10;
+	const idx_t capacity_limit = 3;
 
 	// Configure capacity limit
-	duckdb::BufferCapacityInfo capacity {
+	BufferCapacityInfo capacity {
 	    .block_size = block_size,
 	    .max_capacity = capacity_limit * block_size,
 	    .used_space = 0,
@@ -313,12 +307,12 @@ TEST_CASE("RemotePrewarmStrategy - Execute with Capacity Limit (Mock)", "[remote
 	mock_fs.ConfigureFileSize(file_path, block_size * num_blocks);
 
 	// Create multiple blocks
-	duckdb::vector<RemoteBlockInfo> blocks;
-	for (duckdb::idx_t i = 0; i < num_blocks; i++) {
+	vector<RemoteBlockInfo> blocks;
+	for (idx_t i = 0; i < num_blocks; i++) {
 		blocks.emplace_back(file_path, i * block_size, static_cast<int64_t>(block_size), block_size * num_blocks);
 	}
 
-	duckdb::unordered_map<duckdb::string, duckdb::vector<RemoteBlockInfo>> file_blocks;
+	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
 	file_blocks[file_path] = blocks;
 
 	auto result = strategy.Execute(file_blocks, 100);
@@ -353,25 +347,25 @@ TEST_CASE("RemotePrewarmStrategy - Real Execute Single Block", "[remote_prewarm_
 	DuckDB db(nullptr);
 	Connection con(db);
 	auto &context = *con.context;
-	auto &fs = duckdb::FileSystem::GetFileSystem(context);
+	auto &fs = FileSystem::GetFileSystem(context);
 
 	RemotePrewarmStrategy strategy(context, fs);
 
 	// Create a temporary file for testing
 	auto temp_file = TestCreatePath("test_file.parquet");
-	const duckdb::string test_data = "test data";
-	duckdb::idx_t file_size = test_data.size();
+	const string test_data = "test data";
+	idx_t file_size = test_data.size();
 	{
-		auto handle = fs.OpenFile(temp_file, duckdb::FileOpenFlags::FILE_FLAGS_WRITE |
-		                                         duckdb::FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		auto handle = fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE |
+		                                         FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle->Write(const_cast<char *>(test_data.c_str()), file_size);
 	}
 
 	// Create block info with correct file size
-	duckdb::vector<RemoteBlockInfo> blocks;
+	vector<RemoteBlockInfo> blocks;
 	blocks.emplace_back(temp_file, 0, static_cast<int64_t>(file_size), file_size);
 
-	duckdb::unordered_map<duckdb::string, duckdb::vector<RemoteBlockInfo>> file_blocks;
+	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
 	file_blocks[temp_file] = blocks;
 
 	auto result = strategy.Execute(file_blocks, 0);

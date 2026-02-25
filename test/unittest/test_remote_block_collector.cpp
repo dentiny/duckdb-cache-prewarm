@@ -9,10 +9,6 @@
 
 using namespace duckdb; // NOLINT
 
-using duckdb::MockFileSystem;
-using duckdb::RemoteBlockCollector;
-using duckdb::TestCreatePath;
-
 TEST_CASE("CollectRemoteBlocks - Empty Pattern (Mock)", "[remote_block_collector]") {
 	MockFileSystem mock_fs;
 
@@ -37,7 +33,7 @@ TEST_CASE("CollectRemoteBlocks - Single File (Mock)", "[remote_block_collector]"
 	MockFileSystem mock_fs;
 
 	const string file_path = "/tmp/test_file.parquet";
-	const duckdb::idx_t file_size = 1024;
+	const idx_t file_size = 1024;
 
 	// Configure mock filesystem
 	mock_fs.ConfigureGlobResults(file_path, {file_path});
@@ -70,11 +66,11 @@ TEST_CASE("CollectRemoteBlocks - Single File (Mock)", "[remote_block_collector]"
 TEST_CASE("CollectRemoteBlocks - Multiple Files (Mock)", "[remote_block_collector]") {
 	MockFileSystem mock_fs;
 
-	const duckdb::string pattern = "/tmp/*.parquet";
-	const duckdb::string file1 = "/tmp/file1.parquet";
-	const duckdb::string file2 = "/tmp/file2.parquet";
-	const duckdb::idx_t file1_size = 1024;
-	const duckdb::idx_t file2_size = 2048;
+	const string pattern = "/tmp/*.parquet";
+	const string file1 = "/tmp/file1.parquet";
+	const string file2 = "/tmp/file2.parquet";
+	const idx_t file1_size = 1024;
+	const idx_t file2_size = 2048;
 
 	// Configure mock filesystem
 	mock_fs.ConfigureGlobResults(pattern, {file1, file2});
@@ -109,9 +105,9 @@ TEST_CASE("CollectRemoteBlocks - Multiple Files (Mock)", "[remote_block_collecto
 TEST_CASE("CollectRemoteBlocks - Block Size Parameter (Mock)", "[remote_block_collector]") {
 	MockFileSystem mock_fs;
 
-	const duckdb::string file_path = "/tmp/large_file.parquet";
-	const duckdb::idx_t file_size = 5ULL * 1024ULL * 1024ULL; // 5MB
-	const duckdb::idx_t block_size = 1024ULL * 1024ULL;       // 1MB
+	const string file_path = "/tmp/large_file.parquet";
+	const idx_t file_size = 5ULL * 1024ULL * 1024ULL; // 5MB
+	const idx_t block_size = 1024ULL * 1024ULL;       // 1MB
 
 	// Configure mock filesystem
 	mock_fs.ConfigureGlobResults(file_path, {file_path});
@@ -135,8 +131,8 @@ TEST_CASE("CollectRemoteBlocks - Block Size Parameter (Mock)", "[remote_block_co
 TEST_CASE("CollectRemoteBlocks - Empty File (Mock)", "[remote_block_collector]") {
 	MockFileSystem mock_fs;
 
-	const duckdb::string file_path = "/tmp/empty_file.parquet";
-	const duckdb::idx_t file_size = 0;
+	const string file_path = "/tmp/empty_file.parquet";
+	const idx_t file_size = 0;
 
 	// Configure mock filesystem
 	mock_fs.ConfigureGlobResults(file_path, {file_path});
@@ -165,7 +161,7 @@ TEST_CASE("CollectRemoteBlocks - Real Empty Pattern", "[remote_block_collector]"
 	DuckDB db(nullptr);
 	Connection con(db);
 	auto &context = *con.context;
-	auto &fs = duckdb::FileSystem::GetFileSystem(context);
+	auto &fs = FileSystem::GetFileSystem(context);
 
 	auto result = RemoteBlockCollector::CollectRemoteBlocks(fs, "nonexistent/*.parquet", 1024ULL * 1024ULL);
 	REQUIRE(result.empty());
@@ -175,14 +171,14 @@ TEST_CASE("CollectRemoteBlocks - Real Single File", "[remote_block_collector]") 
 	DuckDB db(nullptr);
 	Connection con(db);
 	auto &context = *con.context;
-	auto &fs = duckdb::FileSystem::GetFileSystem(context);
+	auto &fs = FileSystem::GetFileSystem(context);
 
 	// Create a temporary file
 	auto temp_file = TestCreatePath("test_file.parquet");
 	{
-		const duckdb::string test_data = "test data";
-		auto handle = fs.OpenFile(temp_file, duckdb::FileOpenFlags::FILE_FLAGS_WRITE |
-		                                         duckdb::FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		const string test_data = "test data";
+		auto handle = fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE |
+		                                         FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle->Write(const_cast<char *>(test_data.c_str()), test_data.size());
 	}
 
@@ -204,7 +200,7 @@ TEST_CASE("CollectRemoteBlocks - Real Multiple Files", "[remote_block_collector]
 	DuckDB db(nullptr);
 	Connection con(db);
 	auto &context = *con.context;
-	auto &fs = duckdb::FileSystem::GetFileSystem(context);
+	auto &fs = FileSystem::GetFileSystem(context);
 
 	// Create multiple temporary files
 	auto temp_dir = TestCreatePath("test_dir");
@@ -214,14 +210,14 @@ TEST_CASE("CollectRemoteBlocks - Real Multiple Files", "[remote_block_collector]
 	auto file2 = fs.JoinPath(temp_dir, "file2.parquet");
 
 	{
-		const duckdb::string data1 = "test data 1";
-		auto handle1 = fs.OpenFile(file1, duckdb::FileOpenFlags::FILE_FLAGS_WRITE |
-		                                      duckdb::FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		const string data1 = "test data 1";
+		auto handle1 = fs.OpenFile(file1, FileOpenFlags::FILE_FLAGS_WRITE |
+		                                      FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle1->Write(const_cast<char *>(data1.c_str()), data1.size());
 
-		const duckdb::string data2 = "test data 2";
-		auto handle2 = fs.OpenFile(file2, duckdb::FileOpenFlags::FILE_FLAGS_WRITE |
-		                                      duckdb::FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		const string data2 = "test data 2";
+		auto handle2 = fs.OpenFile(file2, FileOpenFlags::FILE_FLAGS_WRITE |
+		                                      FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle2->Write(const_cast<char *>(data2.c_str()), data2.size());
 	}
 
