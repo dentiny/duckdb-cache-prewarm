@@ -27,7 +27,6 @@ set(EXTENSION_SOURCES
     src/core/remote_prewarm_strategy.cpp
     src/functions/prewarm_function.cpp
     src/functions/prewarm_remote_function.cpp
-    src/functions/prewarm_function.cpp
 
     # duck-read-cache-fs sources
     duck-read-cache-fs/src/cache_httpfs_extension.cpp
@@ -46,12 +45,18 @@ set(EXTENSION_SOURCES
     duck-read-cache-fs/src/cache_exclusion_manager.cpp
     duck-read-cache-fs/src/cache_exclusion_utils.cpp
     duck-read-cache-fs/src/histogram.cpp
+    duck-read-cache-fs/src/disk_cache_util.cpp
+    duck-read-cache-fs/src/in_mem_cache_block.cpp
     duck-read-cache-fs/src/utils/filesystem_utils.cpp
     duck-read-cache-fs/src/utils/thread_utils.cpp
     duck-read-cache-fs/src/utils/thread_pool.cpp
     duck-read-cache-fs/src/utils/chunk_utils.cpp
     duck-read-cache-fs/src/utils/time_utils.cpp
     duck-read-cache-fs/src/utils/fake_filesystem.cpp
+    duck-read-cache-fs/src/utils/mock_filesystem.cpp
+    duck-read-cache-fs/src/utils/scoped_directory.cpp
+    duck-read-cache-fs/src/utils/hash_utils.cpp
+    duck-read-cache-fs/src/utils/url_utils.cpp
     duck-read-cache-fs/src/cache_status_query_function.cpp
     duck-read-cache-fs/src/extension_config_query_function.cpp
     duck-read-cache-fs/src/filesystem_status_query_function.cpp
