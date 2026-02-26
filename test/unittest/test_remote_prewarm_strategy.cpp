@@ -186,6 +186,9 @@ TEST_CASE("RemotePrewarmStrategy - Execute Multiple Blocks Same File (Mock)", "[
 	REQUIRE(mock_fs.GetReadCallCount(file_path) == num_blocks);
 
 	auto read_calls = mock_fs.GetReadCalls(file_path);
+	std::sort(read_calls.begin(), read_calls.end(), [](const auto &a, const auto &b) {
+		return a.offset < b.offset;
+	});
 	for (idx_t i = 0; i < num_blocks; i++) {
 		REQUIRE(read_calls[i].offset == i * block_size);
 		REQUIRE(read_calls[i].size == block_size);
