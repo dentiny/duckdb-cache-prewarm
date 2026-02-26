@@ -30,7 +30,7 @@ void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &resu
 	string pattern = pattern_val.ToString();
 
 	// Parse optional max_blocks
-	idx_t max_blocks = UINT64_MAX;
+	idx_t max_blocks = std::numeric_limits<idx_t>::max();
 	if (args.ColumnCount() > 2) {
 		auto max_blocks_val = args.GetValue(2, 0);
 		if (!max_blocks_val.IsNull()) {

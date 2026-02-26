@@ -76,8 +76,9 @@ vector<OpenFileInfo> MockFileSystem::Glob(const string &path, FileOpener *opener
 
 	if (configured_glob_results.find(path) != configured_glob_results.end()) {
 		vector<OpenFileInfo> result;
+		result.reserve(configured_glob_results[path].size());
 		for (const auto &file_path : configured_glob_results[path]) {
-			result.push_back(OpenFileInfo {file_path});
+			result.emplace_back(OpenFileInfo {file_path});
 		}
 		return result;
 	}
@@ -93,20 +94,18 @@ int64_t MockFileSystem::GetFileSize(FileHandle &handle) {
 }
 
 void MockFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes, idx_t location) {
-	auto mock_handle = dynamic_cast<MockFileHandle *>(&handle);
-	if (mock_handle) {
-		{
-			lock_guard<mutex> lock(mutex_);
-			read_calls.emplace_back(handle.path, static_cast<idx_t>(nr_bytes), location);
-		}
+	auto &mock_handle = handle.Cast<MockFileHandle>();
+	{
+		lock_guard<mutex> lock(mutex_);
+		read_calls.emplace_back(handle.path, static_cast<idx_t>(nr_bytes), location);
+	}
 
-		if (mock_handle->ShouldFail()) {
-			throw IOException("Mock read failure");
-		}
+	if (mock_handle.ShouldFail()) {
+		throw IOException("Mock read failure");
+	}
 
-		if (buffer) {
-			memset(buffer, 'M', static_cast<size_t>(nr_bytes));
-		}
+	if (buffer) {
+		memset(buffer, 'M', static_cast<size_t>(nr_bytes));
 	}
 }
 

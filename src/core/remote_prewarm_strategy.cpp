@@ -42,11 +42,15 @@ idx_t RemotePrewarmStrategy::Execute(const unordered_map<string, vector<RemoteBl
 	}
 
 	idx_t total_blocks = 0, total_uncached_blocks = 0;
-	for (auto blocks : file_blocks) {
-		total_blocks += blocks.second.size();
-		auto uncached_blocks = FilterCachedBlocks(blocks.first, blocks.second);
+	unordered_map<string, vector<RemoteBlockInfo>> uncached_file_blocks;
+	for (const auto &blocks : file_blocks) {
+		const auto &file_path = blocks.first;
+		const auto &block_list = blocks.second;
+
+		total_blocks += block_list.size();
+		auto uncached_blocks = FilterCachedBlocks(file_path, block_list);
 		total_uncached_blocks += uncached_blocks.size();
-		blocks.second = std::move(uncached_blocks);
+		uncached_file_blocks[file_path] = std::move(uncached_blocks);
 	}
 
 	auto capacity_info = CalculateMaxAvailableBlocks();
@@ -56,7 +60,7 @@ idx_t RemotePrewarmStrategy::Execute(const unordered_map<string, vector<RemoteBl
 	if (blocks_to_prewarm < total_uncached_blocks) {
 		idx_t blocks_skipped = total_uncached_blocks - blocks_to_prewarm;
 
-		DUCKDB_LOG_WARN(context,
+		DUCKDB_LOG_DEBUG(context,
 		                "Cache capacity limit reached.\n"
 		                "  Total blocks: %llu (%llu already cached, %llu uncached)\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to capacity)",
@@ -65,19 +69,34 @@ idx_t RemotePrewarmStrategy::Execute(const unordered_map<string, vector<RemoteBl
 		total_uncached_blocks = blocks_to_prewarm;
 	}
 
+	// map from file_path to file_handle
 	unordered_map<string, unique_ptr<FileHandle>> file_handles;
-	for (auto &blocks : file_blocks) {
-		auto file_handle = GetCacheFileSystem().OpenFile(blocks.first, FileOpenFlags::FILE_FLAGS_READ);
-		file_handles[blocks.first] = std::move(file_handle);
+	for (const auto &blocks : uncached_file_blocks) {
+		const auto &file_path = blocks.first;
+		const auto &block_list = blocks.second;
+
+		if (block_list.empty()) {
+			continue;
+		}
+
+		auto file_handle = GetCacheFileSystem().OpenFile(file_path, FileOpenFlags::FILE_FLAGS_READ);
+		file_handles[file_path] = std::move(file_handle);
 	}
 
 	// TODO: use ThreadPool
 	vector<std::future<void>> prewarm_futures;
 	prewarm_futures.reserve(blocks_to_prewarm);
 	idx_t prewarmed_blocks = 0;
-	for (auto &blocks : file_blocks) {
-		auto file_handle = file_handles[blocks.first].get();
-		for (auto &block : blocks.second) {
+	for (const auto &blocks : uncached_file_blocks) {
+		const auto &file_path = blocks.first;
+		const auto &block_list = blocks.second;
+
+		if (block_list.empty()) {
+			continue;
+		}
+
+		auto file_handle = file_handles[file_path].get();
+		for (const auto &block : block_list) {
 			if (prewarmed_blocks >= blocks_to_prewarm) {
 				break;
 			}

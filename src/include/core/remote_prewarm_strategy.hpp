@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/remote_block_collector.hpp"
 #include "core/prewarm_strategy.hpp"
+#include "core/remote_block_collector.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/common/string.hpp"
 #include "duckdb/common/types.hpp"
@@ -10,9 +10,6 @@
 
 // Forward declarations for cache_httpfs types
 namespace duckdb {
-class FileSystem;
-class FileHandle;
-struct CacheHttpfsInstanceState;
 
 //===--------------------------------------------------------------------===//
 // Remote Prewarm Strategy

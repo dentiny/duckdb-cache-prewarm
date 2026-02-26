@@ -78,7 +78,7 @@ private:
 	BufferCapacityInfo configured_capacity;
 };
 
-} // anonymous namespace
+} // namespace
 
 //===--------------------------------------------------------------------===//
 // RemotePrewarmStrategy Tests with Mocks

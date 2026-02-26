@@ -106,6 +106,7 @@ TEST_CASE("CollectRemoteBlocks - Block Size Parameter (Mock)", "[remote_block_co
 	MockFileSystem mock_fs;
 
 	const string file_path = "/tmp/large_file.parquet";
+	// TODO: use cache httpfs's size literal utils
 	const idx_t file_size = 5ULL * 1024ULL * 1024ULL; // 5MB
 	const idx_t block_size = 1024ULL * 1024ULL;       // 1MB
 

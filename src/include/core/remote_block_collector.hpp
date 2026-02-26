@@ -23,7 +23,6 @@ struct RemoteBlockInfo {
 	//! Total file size
 	idx_t file_size;
 
-	// Default constructor for vector operations
 	RemoteBlockInfo() : offset(0), size(0), file_size(0) {
 	}
 

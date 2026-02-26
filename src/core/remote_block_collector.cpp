@@ -24,6 +24,8 @@ RemoteBlockCollector::CollectRemoteBlocks(FileSystem &fs, const string &pattern,
 		idx_t file_size = fs.GetFileSize(*file_handle);
 
 		// TODO: Divide file into blocks
+		// 1. get alignment info
+		// 2. split file to blocks base on that info
 		vector<RemoteBlockInfo> blocks = {{file_info.path, 0, static_cast<int64_t>(file_size), file_size}};
 		file_blocks[file_info.path] = std::move(blocks);
 	}
