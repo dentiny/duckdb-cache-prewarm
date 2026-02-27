@@ -55,7 +55,7 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 		idx_t blocks_skipped = total_blocks - capacity_info.max_blocks;
 		sorted_blocks.resize(capacity_info.max_blocks);
 
-		DUCKDB_LOG_WARN(context,
+		DUCKDB_LOG_WARNING(context,
 		                "Maximum blocks to prefetch limit reached.\n"
 		                "  Table blocks: %llu\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"

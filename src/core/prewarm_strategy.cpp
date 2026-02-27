@@ -56,7 +56,7 @@ LocalPrewarmStrategy::GetUnloadedBlockHandles(const unordered_set<block_id_t> &b
 	unloaded_handles.reserve(block_ids.size());
 	for (block_id_t block_id : block_ids) {
 		auto handle = block_manager.RegisterBlock(block_id);
-		if (handle->GetState() == BlockState::BLOCK_UNLOADED) {
+		if (handle->GetMemory().IsUnloaded()) {
 			unloaded_handles.emplace_back(std::move(handle));
 		}
 	}
