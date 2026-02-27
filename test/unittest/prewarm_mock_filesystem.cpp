@@ -59,7 +59,7 @@ MockFileSystem::MockFileSystem() : FileSystem() {
 
 unique_ptr<FileHandle> MockFileSystem::OpenFile(const string &path, FileOpenFlags flags,
                                                 optional_ptr<FileOpener> opener) {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	open_file_calls.emplace_back(path, flags);
 
 	idx_t file_size = 1024; // Default size
@@ -71,7 +71,7 @@ unique_ptr<FileHandle> MockFileSystem::OpenFile(const string &path, FileOpenFlag
 }
 
 vector<OpenFileInfo> MockFileSystem::Glob(const string &path, FileOpener *opener) {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	glob_calls.emplace_back(path);
 
 	if (configured_glob_results.find(path) != configured_glob_results.end()) {
@@ -96,7 +96,7 @@ int64_t MockFileSystem::GetFileSize(FileHandle &handle) {
 void MockFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes, idx_t location) {
 	auto &mock_handle = handle.Cast<MockFileHandle>();
 	{
-		lock_guard<mutex> lock(mutex_);
+		lock_guard<mutex> lock(mu);
 		read_calls.emplace_back(handle.path, static_cast<idx_t>(nr_bytes), location);
 	}
 
@@ -110,37 +110,37 @@ void MockFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes, id
 }
 
 void MockFileSystem::ConfigureGlobResults(const string &pattern, const vector<string> &results) {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	configured_glob_results[pattern] = results;
 }
 
 void MockFileSystem::ConfigureFileSize(const string &path, idx_t size) {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	configured_file_sizes[path] = size;
 }
 
 idx_t MockFileSystem::GetOpenFileCallCount() const {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	return open_file_calls.size();
 }
 
 vector<MockFileSystem::OpenFileCall> MockFileSystem::GetOpenFileCalls() const {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	return open_file_calls;
 }
 
 idx_t MockFileSystem::GetGlobCallCount() const {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	return glob_calls.size();
 }
 
 vector<MockFileSystem::GlobCall> MockFileSystem::GetGlobCalls() const {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	return glob_calls;
 }
 
 idx_t MockFileSystem::GetReadCallCount(const string &path) const {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	idx_t count = 0;
 	for (const auto &call : read_calls) {
 		if (call.path == path) {
@@ -151,7 +151,7 @@ idx_t MockFileSystem::GetReadCallCount(const string &path) const {
 }
 
 vector<MockFileSystem::ReadCall> MockFileSystem::GetReadCalls(const string &path) const {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	vector<ReadCall> result;
 	for (const auto &call : read_calls) {
 		if (call.path == path) {
@@ -162,12 +162,12 @@ vector<MockFileSystem::ReadCall> MockFileSystem::GetReadCalls(const string &path
 }
 
 idx_t MockFileSystem::GetTotalReadCallCount() const {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	return read_calls.size();
 }
 
 void MockFileSystem::Reset() {
-	lock_guard<mutex> lock(mutex_);
+	lock_guard<mutex> lock(mu);
 	open_file_calls.clear();
 	glob_calls.clear();
 	read_calls.clear();
@@ -175,39 +175,6 @@ void MockFileSystem::Reset() {
 
 string MockFileSystem::GetName() const {
 	return "MockFileSystem";
-}
-
-bool MockFileSystem::CanHandleFile(const string &fpath) {
-	return true;
-}
-
-void MockFileSystem::FileSync(FileHandle &handle) {
-}
-
-bool MockFileSystem::DirectoryExists(const string &directory, optional_ptr<FileOpener> opener) {
-	return true;
-}
-
-void MockFileSystem::CreateDirectory(const string &directory, optional_ptr<FileOpener> opener) {
-}
-
-void MockFileSystem::RemoveDirectory(const string &directory, optional_ptr<FileOpener> opener) {
-}
-
-bool MockFileSystem::FileExists(const string &filename, optional_ptr<FileOpener> opener) {
-	return true;
-}
-
-void MockFileSystem::RemoveFile(const string &filename, optional_ptr<FileOpener> opener) {
-}
-
-bool MockFileSystem::ListFiles(const string &directory, const std::function<void(const string &, bool)> &callback,
-                               FileOpener *opener) {
-	return false;
-}
-
-void MockFileSystem::MoveFile(const string &source, const string &target, optional_ptr<FileOpener> opener) {
-	throw NotImplementedException("MockFileSystem::MoveFile");
 }
 
 } // namespace duckdb

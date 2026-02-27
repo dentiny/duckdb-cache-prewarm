@@ -25,7 +25,7 @@ public:
 
 	//! Override FilterCachedBlocks to track calls
 	vector<RemoteBlockInfo> FilterCachedBlocks(const string &file_path,
-	                                                   const vector<RemoteBlockInfo> &blocks) override {
+	                                           const vector<RemoteBlockInfo> &blocks) override {
 		filter_cached_call_count++;
 		filter_cached_calls.emplace_back(file_path, blocks.size());
 		// Return all blocks (simulate none are cached)
@@ -91,7 +91,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Empty Blocks (Mock)", "[remote_prewar
 	MockFileSystem mock_fs;
 
 	MockRemotePrewarmStrategy strategy(context, mock_fs);
-	unordered_map<string, vector<RemoteBlockInfo>> empty_blocks;
+	RemoteFileBlockMap empty_blocks;
 
 	auto result = strategy.Execute(empty_blocks, 0);
 
@@ -123,7 +123,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Single Block (Mock)", "[remote_prewar
 	vector<RemoteBlockInfo> blocks;
 	blocks.emplace_back(file_path, 0, static_cast<int64_t>(block_size), block_size);
 
-	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
+	RemoteFileBlockMap file_blocks;
 	file_blocks[file_path] = blocks;
 
 	auto result = strategy.Execute(file_blocks, 100);
@@ -172,7 +172,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Multiple Blocks Same File (Mock)", "[
 		blocks.emplace_back(file_path, i * block_size, static_cast<int64_t>(block_size), block_size * num_blocks);
 	}
 
-	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
+	RemoteFileBlockMap file_blocks;
 	file_blocks[file_path] = blocks;
 
 	auto result = strategy.Execute(file_blocks, 1000);
@@ -186,9 +186,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Multiple Blocks Same File (Mock)", "[
 	REQUIRE(mock_fs.GetReadCallCount(file_path) == num_blocks);
 
 	auto read_calls = mock_fs.GetReadCalls(file_path);
-	std::sort(read_calls.begin(), read_calls.end(), [](const auto &a, const auto &b) {
-		return a.offset < b.offset;
-	});
+	std::sort(read_calls.begin(), read_calls.end(), [](const auto &a, const auto &b) { return a.offset < b.offset; });
 	for (idx_t i = 0; i < num_blocks; i++) {
 		REQUIRE(read_calls[i].offset == i * block_size);
 		REQUIRE(read_calls[i].size == block_size);
@@ -223,7 +221,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Multiple Files (Mock)", "[remote_prew
 	blocks2.emplace_back(file2, 0, static_cast<int64_t>(block_size), block_size * 2);
 	blocks2.emplace_back(file2, block_size, static_cast<int64_t>(block_size), block_size * 2);
 
-	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
+	RemoteFileBlockMap file_blocks;
 	file_blocks[file1] = blocks1;
 	file_blocks[file2] = blocks2;
 
@@ -267,7 +265,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute with Max Blocks Limit (Mock)", "[remo
 		blocks.emplace_back(file_path, i * block_size, static_cast<int64_t>(block_size), block_size * num_blocks);
 	}
 
-	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
+	RemoteFileBlockMap file_blocks;
 	file_blocks[file_path] = blocks;
 
 	// Execute with max_blocks limit
@@ -315,7 +313,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute with Capacity Limit (Mock)", "[remote
 		blocks.emplace_back(file_path, i * block_size, static_cast<int64_t>(block_size), block_size * num_blocks);
 	}
 
-	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
+	RemoteFileBlockMap file_blocks;
 	file_blocks[file_path] = blocks;
 
 	auto result = strategy.Execute(file_blocks, 100);
@@ -359,8 +357,8 @@ TEST_CASE("RemotePrewarmStrategy - Real Execute Single Block", "[remote_prewarm_
 	const string test_data = "test data";
 	idx_t file_size = test_data.size();
 	{
-		auto handle = fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE |
-		                                         FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		auto handle =
+		    fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE | FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle->Write(const_cast<char *>(test_data.c_str()), file_size);
 	}
 
@@ -368,7 +366,7 @@ TEST_CASE("RemotePrewarmStrategy - Real Execute Single Block", "[remote_prewarm_
 	vector<RemoteBlockInfo> blocks;
 	blocks.emplace_back(temp_file, 0, static_cast<int64_t>(file_size), file_size);
 
-	unordered_map<string, vector<RemoteBlockInfo>> file_blocks;
+	RemoteFileBlockMap file_blocks;
 	file_blocks[temp_file] = blocks;
 
 	auto result = strategy.Execute(file_blocks, 0);

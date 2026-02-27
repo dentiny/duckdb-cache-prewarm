@@ -9,9 +9,8 @@ namespace duckdb {
 // Remote Block Collector Implementation
 //===--------------------------------------------------------------------===//
 
-unordered_map<string, vector<RemoteBlockInfo>>
-RemoteBlockCollector::CollectRemoteBlocks(FileSystem &fs, const string &pattern, idx_t block_size) {
-	unordered_map<string, vector<RemoteBlockInfo>> file_blocks; // map from file_path to blocks
+RemoteFileBlockMap RemoteBlockCollector::CollectRemoteBlocks(FileSystem &fs, const string &pattern, idx_t block_size) {
+	RemoteFileBlockMap file_blocks;
 	auto glob_results = fs.Glob(pattern);
 	if (glob_results.empty()) {
 		return file_blocks;

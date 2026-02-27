@@ -87,19 +87,9 @@ public:
 	//===--------------------------------------------------------------------===//
 
 	string GetName() const override;
-	bool CanHandleFile(const string &fpath) override;
-	void FileSync(FileHandle &handle) override;
-	bool DirectoryExists(const string &directory, optional_ptr<FileOpener> opener = nullptr) override;
-	void CreateDirectory(const string &directory, optional_ptr<FileOpener> opener = nullptr) override;
-	void RemoveDirectory(const string &directory, optional_ptr<FileOpener> opener = nullptr) override;
-	bool FileExists(const string &filename, optional_ptr<FileOpener> opener = nullptr) override;
-	void RemoveFile(const string &filename, optional_ptr<FileOpener> opener = nullptr) override;
-	bool ListFiles(const string &directory, const std::function<void(const string &, bool)> &callback,
-	               FileOpener *opener = nullptr) override;
-	void MoveFile(const string &source, const string &target, optional_ptr<FileOpener> opener = nullptr) override;
 
 private:
-	mutable mutex mutex_;
+	mutable mutex mu;
 
 	vector<OpenFileCall> open_file_calls;
 	vector<GlobCall> glob_calls;

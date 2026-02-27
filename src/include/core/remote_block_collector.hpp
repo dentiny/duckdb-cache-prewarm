@@ -31,6 +31,9 @@ struct RemoteBlockInfo {
 	}
 };
 
+// Map from file path to vector of remote blocks to prewarm
+using RemoteFileBlockMap = unordered_map<string, vector<RemoteBlockInfo>>;
+
 //===--------------------------------------------------------------------===//
 // Remote Block Collector
 //===--------------------------------------------------------------------===//
@@ -43,8 +46,7 @@ public:
 	//! @param pattern Glob pattern of file path
 	//! @param block_size Size of each block (from cache_httpfs config)
 	//! @return Map of file paths to vector of remote blocks to prewarm
-	static unordered_map<string, vector<RemoteBlockInfo>> CollectRemoteBlocks(FileSystem &fs, const string &pattern,
-	                                                                          idx_t block_size);
+	static RemoteFileBlockMap CollectRemoteBlocks(FileSystem &fs, const string &pattern, idx_t block_size);
 };
 
 } // namespace duckdb

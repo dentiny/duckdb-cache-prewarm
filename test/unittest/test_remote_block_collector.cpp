@@ -178,8 +178,8 @@ TEST_CASE("CollectRemoteBlocks - Real Single File", "[remote_block_collector]") 
 	auto temp_file = TestCreatePath("test_file.parquet");
 	{
 		const string test_data = "test data";
-		auto handle = fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE |
-		                                         FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		auto handle =
+		    fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE | FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle->Write(const_cast<char *>(test_data.c_str()), test_data.size());
 	}
 
@@ -212,13 +212,11 @@ TEST_CASE("CollectRemoteBlocks - Real Multiple Files", "[remote_block_collector]
 
 	{
 		const string data1 = "test data 1";
-		auto handle1 = fs.OpenFile(file1, FileOpenFlags::FILE_FLAGS_WRITE |
-		                                      FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		auto handle1 = fs.OpenFile(file1, FileOpenFlags::FILE_FLAGS_WRITE | FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle1->Write(const_cast<char *>(data1.c_str()), data1.size());
 
 		const string data2 = "test data 2";
-		auto handle2 = fs.OpenFile(file2, FileOpenFlags::FILE_FLAGS_WRITE |
-		                                      FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		auto handle2 = fs.OpenFile(file2, FileOpenFlags::FILE_FLAGS_WRITE | FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle2->Write(const_cast<char *>(data2.c_str()), data2.size());
 	}
 

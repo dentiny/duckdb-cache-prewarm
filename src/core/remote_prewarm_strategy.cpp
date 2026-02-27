@@ -35,14 +35,13 @@ BufferCapacityInfo RemotePrewarmStrategy::CalculateMaxAvailableBlocks() {
 	};
 }
 
-idx_t RemotePrewarmStrategy::Execute(const unordered_map<string, vector<RemoteBlockInfo>> &file_blocks,
-                                     idx_t max_blocks) {
+idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_t max_blocks) {
 	if (file_blocks.empty()) {
 		return 0;
 	}
 
 	idx_t total_blocks = 0, total_uncached_blocks = 0;
-	unordered_map<string, vector<RemoteBlockInfo>> uncached_file_blocks;
+	RemoteFileBlockMap uncached_file_blocks;
 	for (const auto &blocks : file_blocks) {
 		const auto &file_path = blocks.first;
 		const auto &block_list = blocks.second;
@@ -61,11 +60,11 @@ idx_t RemotePrewarmStrategy::Execute(const unordered_map<string, vector<RemoteBl
 		idx_t blocks_skipped = total_uncached_blocks - blocks_to_prewarm;
 
 		DUCKDB_LOG_DEBUG(context,
-		                "Cache capacity limit reached.\n"
-		                "  Total blocks: %llu (%llu already cached, %llu uncached)\n"
-		                "  Prewarming: %llu blocks (skipping %llu due to capacity)",
-		                total_blocks, total_blocks - total_uncached_blocks, total_uncached_blocks, blocks_to_prewarm,
-		                blocks_skipped);
+		                 "Cache capacity limit reached.\n"
+		                 "  Total blocks: %llu (%llu already cached, %llu uncached)\n"
+		                 "  Prewarming: %llu blocks (skipping %llu due to capacity)",
+		                 total_blocks, total_blocks - total_uncached_blocks, total_uncached_blocks, blocks_to_prewarm,
+		                 blocks_skipped);
 		total_uncached_blocks = blocks_to_prewarm;
 	}
 
