@@ -4,6 +4,9 @@
 
 namespace duckdb {
 
+// Load cache_httpfs extension if not already loaded.
+void LoadCacheHttpfsExtensionIfNeeded(ExtensionLoader &loader);
+
 //! Prewarm operation modes (matching PostgreSQL pg_prewarm)
 enum class PrewarmMode {
 	PREFETCH, // Load into DuckDB buffer pool via batched reads (blocks not pinned, may be evicted)

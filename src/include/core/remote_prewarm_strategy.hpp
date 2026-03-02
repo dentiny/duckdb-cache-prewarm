@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cache_filesystem.hpp"
 #include "core/prewarm_strategy.hpp"
 #include "core/remote_block_collector.hpp"
 #include "duckdb/common/shared_ptr.hpp"
@@ -18,7 +19,7 @@ namespace duckdb {
 //! Strategy for prewarming remote file blocks into cache
 class RemotePrewarmStrategy : public PrewarmStrategy {
 public:
-	RemotePrewarmStrategy(ClientContext &context_p, FileSystem &fs_p);
+	RemotePrewarmStrategy(ClientContext &context_p, FileSystem &cache_fs_p);
 
 	//! Execute prewarm on remote blocks
 	//! @param blocks Vector of blocks to prewarm
@@ -33,11 +34,8 @@ public:
 	BufferCapacityInfo CalculateMaxAvailableBlocks() override;
 
 protected:
-	//! Get cache filesystem
-	virtual FileSystem &GetCacheFileSystem();
-
 	ClientContext &context;
-	FileSystem &fs;
+	FileSystem &cache_fs;
 };
 
 } // namespace duckdb

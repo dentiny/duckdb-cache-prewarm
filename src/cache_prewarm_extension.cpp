@@ -13,7 +13,8 @@ namespace {
 
 constexpr const char *CACHE_HTTPFS_EXTENSION = "cache_httpfs";
 
-// Load cache_httpfs extension if not already loaded.
+} // namespace
+
 void LoadCacheHttpfsExtensionIfNeeded(ExtensionLoader &loader) {
 	auto &db_instance = loader.GetDatabaseInstance();
 	if (db_instance.GetExtensionManager().ExtensionIsLoaded(CACHE_HTTPFS_EXTENSION)) {
@@ -32,8 +33,6 @@ void LoadCacheHttpfsExtensionIfNeeded(ExtensionLoader &loader) {
 	extension_install_info.mode = ExtensionInstallMode::UNKNOWN;
 	extension_active_load->FinishLoad(extension_install_info);
 }
-
-} // namespace
 
 void LoadInternal(ExtensionLoader &loader) {
 	LoadCacheHttpfsExtensionIfNeeded(loader);

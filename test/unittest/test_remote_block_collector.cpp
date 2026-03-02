@@ -5,6 +5,7 @@
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/database.hpp"
 #include "prewarm_mock_filesystem.hpp"
+#include "size_literals.hpp"
 #include "test_helpers.hpp"
 
 using namespace duckdb; // NOLINT
@@ -106,9 +107,8 @@ TEST_CASE("CollectRemoteBlocks - Block Size Parameter (Mock)", "[remote_block_co
 	MockFileSystem mock_fs;
 
 	const string file_path = "/tmp/large_file.parquet";
-	// TODO: use cache httpfs's size literal utils
-	const idx_t file_size = 5ULL * 1024ULL * 1024ULL; // 5MB
-	const idx_t block_size = 1024ULL * 1024ULL;       // 1MB
+	const idx_t file_size = 5_MiB;
+	const idx_t block_size = 1_MiB;
 
 	// Configure mock filesystem
 	mock_fs.ConfigureGlobResults(file_path, {file_path});
@@ -142,12 +142,7 @@ TEST_CASE("CollectRemoteBlocks - Empty File (Mock)", "[remote_block_collector]")
 	auto result = RemoteBlockCollector::CollectRemoteBlocks(mock_fs, file_path, 1024ULL * 1024ULL);
 
 	// Verify result
-	REQUIRE(result.size() == 1);
-	auto &blocks = result[file_path];
-	REQUIRE(blocks.size() == 1);
-	REQUIRE(blocks[0].file_size == 0);
-	REQUIRE(blocks[0].offset == 0);
-	REQUIRE(blocks[0].size == 0);
+	REQUIRE(result.size() == 0);
 
 	// Verify filesystem interactions
 	REQUIRE(mock_fs.GetGlobCallCount() == 1);

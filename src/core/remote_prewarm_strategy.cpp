@@ -1,26 +1,24 @@
 #include "core/remote_prewarm_strategy.hpp"
 
 #include "core/prewarm_strategy.hpp"
+#include "cache_httpfs_instance_state.hpp"
+#include "cache_filesystem_config.hpp"
 #include "duckdb/common/unordered_map.hpp"
 #include "duckdb/logging/logger.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
+#include "thread_pool.hpp"
 #include <future>
 
 namespace duckdb {
 
-RemotePrewarmStrategy::RemotePrewarmStrategy(ClientContext &context_p, FileSystem &fs_p)
-    : PrewarmStrategy(context_p), context(context_p), fs(fs_p) {
-}
-
-FileSystem &RemotePrewarmStrategy::GetCacheFileSystem() {
-	// TODO: get CacheFileSystem once we integrate with cache_httpfs
-	return fs;
+RemotePrewarmStrategy::RemotePrewarmStrategy(ClientContext &context_p, FileSystem &cache_fs_p)
+    : PrewarmStrategy(context_p), context(context_p), cache_fs(cache_fs_p) {
 }
 
 vector<RemoteBlockInfo> RemotePrewarmStrategy::FilterCachedBlocks(const string &file_path,
                                                                   const vector<RemoteBlockInfo> &blocks) {
-	// TODO: implement
+	// TODO: implement a API to do this filtering at cache_httpfs side
 	return blocks;
 }
 
@@ -78,11 +76,13 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 			continue;
 		}
 
-		auto file_handle = GetCacheFileSystem().OpenFile(file_path, FileOpenFlags::FILE_FLAGS_READ);
+		auto file_handle = cache_fs.OpenFile(file_path, FileOpenFlags::FILE_FLAGS_READ);
 		file_handles[file_path] = std::move(file_handle);
 	}
 
-	// TODO: use ThreadPool
+	const CacheHttpfsInstanceState &instance_state = GetInstanceStateOrThrow(context);
+	const auto task_count = GetThreadCountForSubrequests(blocks_to_prewarm, instance_state.config.max_subrequest_count);
+	ThreadPool thread_pool(task_count);
 	vector<std::future<void>> prewarm_futures;
 	prewarm_futures.reserve(blocks_to_prewarm);
 	idx_t prewarmed_blocks = 0;
@@ -99,7 +99,7 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 			if (prewarmed_blocks >= blocks_to_prewarm) {
 				break;
 			}
-			auto future = std::async(std::launch::async, [this, block, file_handle]() {
+			auto future = thread_pool.Push([block, file_handle]() {
 				// TODO: add a easy buffer pool to reuse the buffer
 				auto buffer = unique_ptr<char[]>(new char[block.size]);
 				// we only care about on-disk cache file, but not return value

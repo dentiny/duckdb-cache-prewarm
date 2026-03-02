@@ -1,5 +1,6 @@
 #include "core/remote_block_collector.hpp"
 
+#include "chunk_utils.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/file_system.hpp"
 
@@ -21,11 +22,26 @@ RemoteFileBlockMap RemoteBlockCollector::CollectRemoteBlocks(FileSystem &fs, con
 		// Open file to get size
 		auto file_handle = fs.OpenFile(file_info.path, FileOpenFlags::FILE_FLAGS_READ);
 		idx_t file_size = fs.GetFileSize(*file_handle);
+		if (file_size == 0) {
+			continue;
+		}
 
-		// TODO: Divide file into blocks
-		// 1. get alignment info
-		// 2. split file to blocks base on that info
-		vector<RemoteBlockInfo> blocks = {{file_info.path, 0, static_cast<int64_t>(file_size), file_size}};
+		// Divide file into blocks
+		const ReadRequestParams read_params {
+		    .requested_start_offset = 0,
+		    .requested_bytes_to_read = file_size,
+		    .block_size = block_size,
+		};
+		const ChunkAlignmentInfo alignment_info = CalculateChunkAlignment(read_params);
+		vector<RemoteBlockInfo> blocks;
+		blocks.reserve(alignment_info.subrequest_count);
+
+		for (idx_t i = 0; i < alignment_info.subrequest_count; i++) {
+			idx_t offset = alignment_info.aligned_start_offset + i * block_size;
+			idx_t actual_size = std::min(block_size, file_size - offset);
+			blocks.emplace_back(file_info.path, offset, static_cast<int64_t>(actual_size), file_size);
+		}
+
 		file_blocks[file_info.path] = std::move(blocks);
 	}
 

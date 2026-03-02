@@ -1,6 +1,7 @@
 #include "catch/catch.hpp"
 
 #include "core/remote_prewarm_strategy.hpp"
+#include "cache_httpfs_extension.hpp"
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/database.hpp"
@@ -347,10 +348,12 @@ TEST_CASE("RemotePrewarmStrategy - RemoteBlockInfo Structure", "[remote_prewarm_
 TEST_CASE("RemotePrewarmStrategy - Real Execute Single Block", "[remote_prewarm_strategy]") {
 	DuckDB db(nullptr);
 	Connection con(db);
+	ExtensionLoader loader(DatabaseInstance::GetDatabase(*con.context), "cache_httpfs");
+	LoadCacheHttpfsExtensionIfNeeded(loader);
 	auto &context = *con.context;
-	auto &fs = FileSystem::GetFileSystem(context);
+	auto &cache_fs = db.GetFileSystem().Cast<CacheFileSystem>();
 
-	RemotePrewarmStrategy strategy(context, fs);
+	RemotePrewarmStrategy strategy(context, cache_fs);
 
 	// Create a temporary file for testing
 	auto temp_file = TestCreatePath("test_file.parquet");
@@ -358,7 +361,7 @@ TEST_CASE("RemotePrewarmStrategy - Real Execute Single Block", "[remote_prewarm_
 	idx_t file_size = test_data.size();
 	{
 		auto handle =
-		    fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE | FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		    cache_fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE | FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle->Write(const_cast<char *>(test_data.c_str()), file_size);
 	}
 
