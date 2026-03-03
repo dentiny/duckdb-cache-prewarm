@@ -2,6 +2,7 @@
 
 #include "cache_prewarm_extension.hpp"
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
+#include "duckdb/common/limits.hpp"
 #include "duckdb/common/unordered_set.hpp"
 #include "duckdb/storage/storage_info.hpp"
 
@@ -60,7 +61,9 @@ public:
 	//! Returns number of blocks successfully prewarmed
 	//! If a provided block_id doesn't exist, it is silently skipped and not counted
 	//! in the return value. The method does not throw errors for non-existent blocks.
-	virtual idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) = 0;
+	//! @param max_blocks Maximum number of blocks to prewarm (default: no limit)
+	virtual idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
+	                      idx_t max_blocks = NumericLimits<idx_t>::Maximum()) = 0;
 
 protected:
 	//! Check if direct I/O is enabled and throw an exception if OS page cache strategies won't work

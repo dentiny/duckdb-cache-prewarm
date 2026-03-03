@@ -56,7 +56,8 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 			continue;
 		}
 		uncached_file_blocks[file_path] = std::move(uncached_blocks);
-		auto file_handle = fs.OpenFile(file_path, FileOpenFlags::FILE_FLAGS_READ | FileOpenFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS);
+		auto file_handle =
+		    fs.OpenFile(file_path, FileOpenFlags::FILE_FLAGS_READ | FileOpenFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS);
 		if (!file_handle) {
 			// TODO: add a debug logging that we skipped file
 			continue;

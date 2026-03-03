@@ -57,7 +57,8 @@ private:
 
 } // namespace
 
-idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
+idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
+                                   idx_t max_blocks) {
 	CheckDirectIO("READ");
 
 	auto unloaded_handles = GetUnloadedBlockHandles(block_ids);
@@ -69,24 +70,25 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 	auto block_size = block_manager.GetBlockAllocSize();
 
 	auto capacity_info = CalculateMaxAvailableBlocks();
+	idx_t effective_max = std::min(capacity_info.max_blocks, max_blocks);
 	idx_t total_blocks = unloaded_handles.size();
-	idx_t max_batch_size = capacity_info.max_blocks;
+	idx_t max_batch_size = effective_max;
 	if (max_batch_size == 0) {
 		DUCKDB_LOG_WARN(context,
 		                "Insufficient memory to prewarm any blocks (available: %llu bytes, block size: %llu bytes)",
 		                capacity_info.available_space, capacity_info.block_size);
 		return 0;
 	}
-	if (total_blocks > capacity_info.max_blocks) {
-		idx_t blocks_skipped = total_blocks - capacity_info.max_blocks;
-		unloaded_handles.resize(capacity_info.max_blocks);
+	if (total_blocks > effective_max) {
+		idx_t blocks_skipped = total_blocks - effective_max;
+		unloaded_handles.resize(effective_max);
 
 		DUCKDB_LOG_WARN(context,
 		                "Maximum blocks to read limit reached.\n"
 		                "  Table blocks: %llu\n"
-		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"
+		                "  Prewarming: %llu blocks (skipping %llu due to limit)\n"
 		                "  Current available memory: %llu bytes, consider increasing memory_limit",
-		                total_blocks, capacity_info.max_blocks, blocks_skipped, capacity_info.available_space);
+		                total_blocks, effective_max, blocks_skipped, capacity_info.available_space);
 		total_blocks = unloaded_handles.size();
 	}
 

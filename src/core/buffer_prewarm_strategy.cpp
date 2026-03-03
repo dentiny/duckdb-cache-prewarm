@@ -43,34 +43,36 @@ private:
 
 } // namespace
 
-idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
+idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
+                                     idx_t max_blocks) {
 	auto unloaded_handles = GetUnloadedBlockHandles(block_ids);
 	if (unloaded_handles.empty()) {
 		return 0;
 	}
 
 	auto capacity_info = CalculateMaxAvailableBlocks();
+	idx_t effective_max = std::min(capacity_info.max_blocks, max_blocks);
 
 	idx_t total_blocks = block_ids.size();
 	idx_t already_cached = total_blocks - unloaded_handles.size();
 	idx_t blocks_to_prewarm = unloaded_handles.size();
 
-	if (unloaded_handles.size() > capacity_info.max_blocks) {
-		idx_t blocks_skipped = unloaded_handles.size() - capacity_info.max_blocks;
-		unloaded_handles.resize(capacity_info.max_blocks);
+	if (unloaded_handles.size() > effective_max) {
+		idx_t blocks_skipped = unloaded_handles.size() - effective_max;
+		unloaded_handles.resize(effective_max);
 
 		DUCKDB_LOG_WARN(context,
 		                "Buffer pool capacity limit reached.\n"
 		                "  Table blocks: %llu total (%llu already cached, %llu unloaded)\n"
-		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"
+		                "  Prewarming: %llu blocks (skipping %llu due to limit)\n"
 		                "  Memory: %llu bytes available, %llu bytes required for all unloaded blocks",
-		                total_blocks, already_cached, blocks_to_prewarm, capacity_info.max_blocks, blocks_skipped,
+		                total_blocks, already_cached, blocks_to_prewarm, effective_max, blocks_skipped,
 		                capacity_info.available_space, blocks_to_prewarm * capacity_info.block_size);
 	}
 
 	auto thread_count = std::max(1, TaskScheduler::GetScheduler(context).NumberOfThreads());
-	auto blocks_per_task = CalculateBlocksPerTask(capacity_info.block_size, capacity_info.max_blocks, thread_count,
-	                                              BUFFER_PREFETCH_TARGET_BYTES);
+	auto blocks_per_task =
+	    CalculateBlocksPerTask(capacity_info.block_size, effective_max, thread_count, BUFFER_PREFETCH_TARGET_BYTES);
 	if (blocks_per_task == 0) {
 		return 0;
 	}

@@ -30,17 +30,18 @@ void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &resu
 	}
 	string pattern = pattern_val.ToString();
 
-	// Parse optional max_blocks
-	idx_t max_blocks = std::numeric_limits<idx_t>::max();
-	if (args.ColumnCount() > 1) {
-		auto max_blocks_val = args.GetValue(1, 0);
-		if (!max_blocks_val.IsNull()) {
-			max_blocks = max_blocks_val.GetValue<int64_t>();
-		}
-	}
-
 	auto &instance_state = GetInstanceStateOrThrow(context);
 	idx_t block_size = instance_state.config.cache_block_size;
+
+	// Parse optional max_size (bytes) and convert to max_blocks
+	idx_t max_blocks = std::numeric_limits<idx_t>::max();
+	if (args.ColumnCount() > 1) {
+		auto max_size_val = args.GetValue(1, 0);
+		if (!max_size_val.IsNull()) {
+			idx_t max_bytes = static_cast<idx_t>(max_size_val.GetValue<int64_t>());
+			max_blocks = max_bytes / block_size;
+		}
+	}
 
 	// Get filesystem from database
 	auto &db = DatabaseInstance::GetDatabase(context);
@@ -57,10 +58,11 @@ void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &resu
 		blocks_prewarmed = strategy.Execute(blocks, max_blocks);
 	}
 
-	// Return result
+	// Return bytes prewarmed
+	idx_t bytes_prewarmed = blocks_prewarmed * block_size;
 	result.SetVectorType(VectorType::CONSTANT_VECTOR);
 	auto result_data = ConstantVector::GetData<int64_t>(result);
-	result_data[0] = NumericCast<int64_t>(blocks_prewarmed);
+	result_data[0] = NumericCast<int64_t>(bytes_prewarmed);
 }
 
 } // namespace
@@ -78,7 +80,7 @@ void RegisterPrewarmRemoteFunction(ExtensionLoader &loader) {
 	                                              /*return_type=*/LogicalType {LogicalTypeId::BIGINT},
 	                                              PrewarmRemoteFunction));
 
-	// prewarm_remote(pattern, max_blocks)
+	// prewarm_remote(pattern, max_size_bytes)
 	prewarm_remote_set.AddFunction(
 	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::BIGINT}},
 	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmRemoteFunction));

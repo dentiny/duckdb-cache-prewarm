@@ -57,22 +57,36 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 		throw InvalidInputException("Table name cannot be NULL");
 	}
 
+	// Parse table name (1st argument)
 	auto table_val = args.GetValue(0, 0);
 	if (table_val.IsNull()) {
 		throw InvalidInputException("Table name cannot be NULL");
 	}
 	string table_name = table_val.ToString();
 
+	// Parse prewarm mode (2nd argument)
 	PrewarmMode mode = PrewarmMode::BUFFER;
 	if (args.ColumnCount() > 1) {
 		mode = ParsePrewarmMode(args.GetValue(1, 0));
 	}
 
+	// Parse schema (3rd argument)
 	string schema = "main";
 	if (args.ColumnCount() > 2) {
 		auto schema_val = args.GetValue(2, 0);
 		if (!schema_val.IsNull()) {
 			schema = schema_val.ToString();
+		}
+	}
+
+	// Parse size limit in bytes (4th argument)
+	idx_t max_bytes = NumericLimits<idx_t>::Maximum();
+	bool has_size_limit = false;
+	if (args.ColumnCount() > 3) {
+		auto size_val = args.GetValue(3, 0);
+		if (!size_val.IsNull()) {
+			max_bytes = static_cast<idx_t>(size_val.GetValue<int64_t>());
+			has_size_limit = true;
 		}
 	}
 
@@ -84,20 +98,29 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	auto &table_catalog_entry = catalog.GetEntry<TableCatalogEntry>(context, schema, table_name);
 	auto &duck_table = table_catalog_entry.Cast<DuckTableEntry>();
 
+	// Convert max_bytes to max_blocks using the block size
+	auto &block_manager = StorageManager::Get(*default_db).GetBlockManager();
+	idx_t block_size = block_manager.GetBlockAllocSize();
+	idx_t max_blocks = NumericLimits<idx_t>::Maximum();
+	if (has_size_limit) {
+		max_blocks = max_bytes / block_size;
+	}
+
 	// Collect all blocks from the table using BlockCollector
 	unordered_set<block_id_t> block_ids = BlockCollector::CollectTableBlocks(duck_table);
 
 	// Execute prewarm using the appropriate strategy
 	idx_t blocks_prewarmed = 0;
 	if (!block_ids.empty()) {
-		auto strategy = CreateLocalPrewarmStrategy(context, mode, StorageManager::Get(*default_db).GetBlockManager(),
-		                                           BufferManager::GetBufferManager(context));
-		blocks_prewarmed = strategy->Execute(duck_table, block_ids);
+		auto strategy =
+		    CreateLocalPrewarmStrategy(context, mode, block_manager, BufferManager::GetBufferManager(context));
+		blocks_prewarmed = strategy->Execute(duck_table, block_ids, max_blocks);
 	}
 
+	idx_t bytes_prewarmed = blocks_prewarmed * block_size;
 	result.SetVectorType(VectorType::CONSTANT_VECTOR);
 	auto result_data = ConstantVector::GetData<int64_t>(result);
-	result_data[0] = NumericCast<int64_t>(blocks_prewarmed);
+	result_data[0] = NumericCast<int64_t>(bytes_prewarmed);
 }
 
 //===--------------------------------------------------------------------===//
@@ -115,6 +138,10 @@ void RegisterPrewarmFunction(ExtensionLoader &loader) {
 	prewarm_set.AddFunction(
 	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::VARCHAR},
 	                                   LogicalType {LogicalTypeId::VARCHAR}},
+	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
+	prewarm_set.AddFunction(
+	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::VARCHAR},
+	                                   LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::BIGINT}},
 	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
 	loader.RegisterFunction(prewarm_set);
 }

@@ -52,7 +52,7 @@ restart
 
 # prefetch mode on the requests table
 query I
-SELECT prewarm('requests', 'prefetch') >= 24;
+SELECT prewarm('requests', 'prefetch') > 200;
 ----
 true
 
@@ -82,7 +82,7 @@ FROM range(500000) t(i);
 restart
 
 query I
-SELECT prewarm('events') > 10;
+SELECT prewarm('events') > 4000000;
 ----
 true
 
@@ -99,7 +99,14 @@ restart
 
 # prefetch mode on the events table
 query I
-SELECT prewarm('events', 'prefetch') >= 24;
+SELECT prewarm('events', 'prefetch') > 7000000;
 ----
 true
 
+restart
+
+# Test prewarm with size limit parameter (bytes)
+query I
+SELECT prewarm('events', 'buffer', 'main', 1000000);
+----
+786432
