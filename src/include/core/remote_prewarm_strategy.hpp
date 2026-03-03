@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/prewarm_strategy.hpp"
+#include "duckdb/common/file_system.hpp"
 #include "core/remote_block_collector.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/common/string.hpp"
@@ -33,9 +34,6 @@ public:
 	BufferCapacityInfo CalculateMaxAvailableBlocks() override;
 
 protected:
-	//! Get cache filesystem
-	virtual FileSystem &GetCacheFileSystem();
-
 	ClientContext &context;
 	FileSystem &fs;
 };

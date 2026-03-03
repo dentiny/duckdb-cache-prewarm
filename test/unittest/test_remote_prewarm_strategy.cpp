@@ -1,6 +1,7 @@
 #include "catch/catch.hpp"
 
 #include "core/remote_prewarm_strategy.hpp"
+#include "cache_httpfs_extension.hpp"
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/database.hpp"
@@ -347,8 +348,11 @@ TEST_CASE("RemotePrewarmStrategy - RemoteBlockInfo Structure", "[remote_prewarm_
 TEST_CASE("RemotePrewarmStrategy - Real Execute Single Block", "[remote_prewarm_strategy]") {
 	DuckDB db(nullptr);
 	Connection con(db);
+	ExtensionLoader loader(DatabaseInstance::GetDatabase(*con.context), "cache_httpfs");
+	LoadCacheHttpfsExtensionIfNeeded(loader);
 	auto &context = *con.context;
-	auto &fs = FileSystem::GetFileSystem(context);
+	// OpenerFileSystem(fs) -> VirtualFileSystem -> CacheFileSystem
+	auto &fs = db.GetFileSystem();
 
 	RemotePrewarmStrategy strategy(context, fs);
 

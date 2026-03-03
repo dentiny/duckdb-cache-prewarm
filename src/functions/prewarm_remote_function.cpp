@@ -1,5 +1,6 @@
 #include "functions/prewarm_remote_function.hpp"
 
+#include "cache_httpfs_instance_state.hpp"
 #include "core/remote_block_collector.hpp"
 #include "core/remote_prewarm_strategy.hpp"
 
@@ -31,18 +32,19 @@ void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &resu
 
 	// Parse optional max_blocks
 	idx_t max_blocks = std::numeric_limits<idx_t>::max();
-	if (args.ColumnCount() > 2) {
-		auto max_blocks_val = args.GetValue(2, 0);
+	if (args.ColumnCount() > 1) {
+		auto max_blocks_val = args.GetValue(1, 0);
 		if (!max_blocks_val.IsNull()) {
 			max_blocks = max_blocks_val.GetValue<int64_t>();
 		}
 	}
 
-	// TODO: Get cache block size from config
-	idx_t block_size = 1024ULL * 1024ULL;
+	auto &instance_state = GetInstanceStateOrThrow(context);
+	idx_t block_size = instance_state.config.cache_block_size;
 
 	// Get filesystem from database
 	auto &db = DatabaseInstance::GetDatabase(context);
+	// OpenerFileSystem(fs) -> VirtualFileSystem -> CacheFileSystem
 	auto &fs = db.GetFileSystem();
 
 	// Collect remote blocks
