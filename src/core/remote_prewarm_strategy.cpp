@@ -40,6 +40,10 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 
 	idx_t total_blocks = 0, total_uncached_blocks = 0;
 	RemoteFileBlockMap uncached_file_blocks;
+	uncached_file_blocks.reserve(file_blocks.size());
+	// map from file_path to file_handle
+	unordered_map<string, unique_ptr<FileHandle>> file_handles;
+	file_handles.reserve(file_blocks.size());
 	for (const auto &blocks : file_blocks) {
 		const auto &file_path = blocks.first;
 		const auto &block_list = blocks.second;
@@ -47,7 +51,17 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 		total_blocks += block_list.size();
 		auto uncached_blocks = FilterCachedBlocks(file_path, block_list);
 		total_uncached_blocks += uncached_blocks.size();
+		if (uncached_blocks.empty()) {
+			// TODO: add a debug logging that we skipped file
+			continue;
+		}
 		uncached_file_blocks[file_path] = std::move(uncached_blocks);
+		auto file_handle = fs.OpenFile(file_path, FileOpenFlags::FILE_FLAGS_READ | FileOpenFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS);
+		if (!file_handle) {
+			// TODO: add a debug logging that we skipped file
+			continue;
+		}
+		file_handles[file_path] = std::move(file_handle);
 	}
 
 	auto capacity_info = CalculateMaxAvailableBlocks();
@@ -66,20 +80,6 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 		total_uncached_blocks = blocks_to_prewarm;
 	}
 
-	// map from file_path to file_handle
-	unordered_map<string, unique_ptr<FileHandle>> file_handles;
-	for (const auto &blocks : uncached_file_blocks) {
-		const auto &file_path = blocks.first;
-		const auto &block_list = blocks.second;
-
-		if (block_list.empty()) {
-			continue;
-		}
-
-		auto file_handle = cache_fs.OpenFile(file_path, FileOpenFlags::FILE_FLAGS_READ);
-		file_handles[file_path] = std::move(file_handle);
-	}
-
 	const CacheHttpfsInstanceState &instance_state = GetInstanceStateOrThrow(context);
 	const auto task_count = GetThreadCountForSubrequests(blocks_to_prewarm, instance_state.config.max_subrequest_count);
 	ThreadPool thread_pool(task_count);
@@ -89,10 +89,6 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 	for (const auto &blocks : uncached_file_blocks) {
 		const auto &file_path = blocks.first;
 		const auto &block_list = blocks.second;
-
-		if (block_list.empty()) {
-			continue;
-		}
 
 		auto file_handle = file_handles[file_path].get();
 		for (const auto &block : block_list) {
