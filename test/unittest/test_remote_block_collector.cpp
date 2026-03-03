@@ -142,7 +142,7 @@ TEST_CASE("CollectRemoteBlocks - Empty File (Mock)", "[remote_block_collector]")
 	auto result = RemoteBlockCollector::CollectRemoteBlocks(mock_fs, file_path, 1024ULL * 1024ULL);
 
 	// Verify result
-	REQUIRE(result.size() == 0);
+	REQUIRE(result.empty());
 
 	// Verify filesystem interactions
 	REQUIRE(mock_fs.GetGlobCallCount() == 1);
