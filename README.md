@@ -111,6 +111,28 @@ SELECT prewarm('events', 'prefetch');
 
 > **Note:** The returned block count may vary depending on compression and data layout. The count is approximate and for reference only.
 
+## Remote Prewarm
+
+The `prewarm_remote` function preloads remote file data into the local cache managed by [`cache_httpfs`](https://github.com/dentiny/duck-read-cache-fs). This is useful for warming up cached remote files (e.g., S3, HTTP) before querying them.
+
+```sql
+-- Prewarm a remote file into the local cache
+SELECT prewarm_remote('https://example.com/data.parquet');
+
+-- Prewarm with a maximum number of blocks
+SELECT prewarm_remote('https://example.com/data.parquet', 100);
+
+-- Glob pattern matching is supported
+SELECT prewarm_remote('/tmp/cache_httpfs/data_*.csv');
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `pattern` | **(Required)** URL or file path pattern to prewarm. Supports glob patterns. |
+| `max_blocks` | **(Optional)** Maximum number of blocks to prewarm. Defaults to unlimited. |
+
+> **Note:** `prewarm_remote` requires the `cache_httpfs` extension to be loaded. The block size is determined by the `cache_httpfs_cache_block_size` setting.
+
 ## When to Use
 
 - **Cold start optimization**: Prewarm frequently accessed tables after database restart
@@ -121,7 +143,7 @@ SELECT prewarm('events', 'prefetch');
 
 - [ ] Support prewarm with block ID range
 - [ ] Support prewarm for indexes
-- [ ] Remote table and file support (leverage `cache_httpfs`)
+- [x] Remote table and file support (leverage `cache_httpfs`)
 - [ ] Autoprewarm (automatic cache warming on startup, similar to pg_prewarm's `autoprewarm`)
 
 ## License
