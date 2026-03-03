@@ -13,6 +13,12 @@ namespace {
 
 constexpr const char *CACHE_HTTPFS_EXTENSION = "cache_httpfs";
 
+void LoadInternal(ExtensionLoader &loader) {
+	LoadCacheHttpfsExtensionIfNeeded(loader);
+	RegisterPrewarmFunction(loader);
+	RegisterPrewarmRemoteFunction(loader);
+}
+
 } // namespace
 
 void LoadCacheHttpfsExtensionIfNeeded(ExtensionLoader &loader) {
@@ -32,12 +38,6 @@ void LoadCacheHttpfsExtensionIfNeeded(ExtensionLoader &loader) {
 	ExtensionInstallInfo extension_install_info;
 	extension_install_info.mode = ExtensionInstallMode::UNKNOWN;
 	extension_active_load->FinishLoad(extension_install_info);
-}
-
-void LoadInternal(ExtensionLoader &loader) {
-	LoadCacheHttpfsExtensionIfNeeded(loader);
-	RegisterPrewarmFunction(loader);
-	RegisterPrewarmRemoteFunction(loader);
 }
 
 void CachePrewarmExtension::Load(ExtensionLoader &loader) {

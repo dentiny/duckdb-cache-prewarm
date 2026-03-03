@@ -12,8 +12,8 @@
 
 namespace duckdb {
 
-RemotePrewarmStrategy::RemotePrewarmStrategy(ClientContext &context_p, FileSystem &cache_fs_p)
-    : PrewarmStrategy(context_p), context(context_p), cache_fs(cache_fs_p) {
+RemotePrewarmStrategy::RemotePrewarmStrategy(ClientContext &context_p, FileSystem &fs_p)
+    : PrewarmStrategy(context_p), context(context_p), fs(fs_p) {
 }
 
 vector<RemoteBlockInfo> RemotePrewarmStrategy::FilterCachedBlocks(const string &file_path,

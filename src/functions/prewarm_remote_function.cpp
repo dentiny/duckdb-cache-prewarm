@@ -44,15 +44,16 @@ void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &resu
 
 	// Get filesystem from database
 	auto &db = DatabaseInstance::GetDatabase(context);
-	auto &cache_fs = db.GetFileSystem().Cast<CacheFileSystem>();
+	// OpenerFileSystem(fs) -> VirtualFileSystem -> CacheFileSystem
+	auto &fs = db.GetFileSystem();
 
 	// Collect remote blocks
-	auto blocks = RemoteBlockCollector::CollectRemoteBlocks(cache_fs, pattern, block_size);
+	auto blocks = RemoteBlockCollector::CollectRemoteBlocks(fs, pattern, block_size);
 
 	// Execute prewarm strategy
 	idx_t blocks_prewarmed = 0;
 	if (!blocks.empty()) {
-		RemotePrewarmStrategy strategy(context, cache_fs);
+		RemotePrewarmStrategy strategy(context, fs);
 		blocks_prewarmed = strategy.Execute(blocks, max_blocks);
 	}
 

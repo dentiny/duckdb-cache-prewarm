@@ -351,9 +351,10 @@ TEST_CASE("RemotePrewarmStrategy - Real Execute Single Block", "[remote_prewarm_
 	ExtensionLoader loader(DatabaseInstance::GetDatabase(*con.context), "cache_httpfs");
 	LoadCacheHttpfsExtensionIfNeeded(loader);
 	auto &context = *con.context;
-	auto &cache_fs = db.GetFileSystem().Cast<CacheFileSystem>();
+	// OpenerFileSystem(fs) -> VirtualFileSystem -> CacheFileSystem
+	auto &fs = db.GetFileSystem();
 
-	RemotePrewarmStrategy strategy(context, cache_fs);
+	RemotePrewarmStrategy strategy(context, fs);
 
 	// Create a temporary file for testing
 	auto temp_file = TestCreatePath("test_file.parquet");
@@ -361,7 +362,7 @@ TEST_CASE("RemotePrewarmStrategy - Real Execute Single Block", "[remote_prewarm_
 	idx_t file_size = test_data.size();
 	{
 		auto handle =
-		    cache_fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE | FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
+		    fs.OpenFile(temp_file, FileOpenFlags::FILE_FLAGS_WRITE | FileOpenFlags::FILE_FLAGS_FILE_CREATE_NEW);
 		handle->Write(const_cast<char *>(test_data.c_str()), file_size);
 	}
 
