@@ -24,7 +24,7 @@ public:
 	//! Execute prewarm on remote blocks
 	//! @param blocks Vector of blocks to prewarm
 	//! @param max_blocks Maximum blocks to prewarm (use UINT64_MAX / max idx_t value for no limit)
-	//! @return Number of blocks successfully prewarmed
+	//! @return Number of bytes successfully prewarmed (precise, accounts for partial blocks)
 	virtual idx_t Execute(const RemoteFileBlockMap &file_blocks, idx_t max_blocks);
 
 	//! Filter out cached blocks from the given file path and blocks
