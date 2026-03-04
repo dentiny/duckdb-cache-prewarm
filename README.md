@@ -18,9 +18,33 @@ SELECT prewarm('table_name');
 -- With explicit mode
 SELECT prewarm('table_name', 'buffer');
 
--- With schema specification
-SELECT prewarm('table_name', 'buffer', 'my_schema');
+-- With size limit (human-readable format)
+SELECT prewarm('table_name', 'buffer', '1GB');
+SELECT prewarm('table_name', 'buffer', '100MB');
+
+-- With size limit (raw bytes)
+SELECT prewarm('table_name', 'buffer', 1000000);
+
+-- With qualified table name (schema.table or database.schema.table)
+SELECT prewarm('my_schema.table_name');
+SELECT prewarm('my_database.my_schema.table_name', 'prefetch');
 ```
+
+### Remote Prewarm
+
+```sql
+-- Prewarm a remote file into the on-disk cache
+SELECT prewarm_remote('https://example.com/data/file.parquet');
+
+-- Prewarm with a glob pattern (multiple files)
+SELECT prewarm_remote('https://example.com/data/*.parquet');
+
+-- With size limit (raw bytes or human-readable string)
+SELECT prewarm_remote('https://example.com/data/file.parquet', 1000000);
+SELECT prewarm_remote('https://example.com/data/file.parquet', '100MB');
+```
+
+> **Note:** `prewarm_remote` requires `cache_httpfs` to be configured (e.g., `SET cache_httpfs_type='on_disk'`). It returns the precise number of bytes prewarmed.
 
 ## Prewarm Modes
 
@@ -79,37 +103,66 @@ CHECKPOINT;
 └─────────┘
 
 -- Prewarm the duckdb cache for the events table
--- the result is the number of blocks prewarmed, which may vary depending on how the compression is applied to the table
--- NOTICE that, the result is mostly accurate and only for reference
+-- The return value is the number of bytes prewarmed
+-- It may vary depending on how compression is applied to the table
 SELECT prewarm('events'); -- or prewarm('events', 'buffer')
 ┌─────────────────────┐
 │ prewarm('events')   │
 │        int64        │
 ├─────────────────────┤
-│         17          │
+│       4456448       │
 └─────────────────────┘
 
--- Prewarm the os page cache for the events table using the read strategy
+-- Prewarm the OS page cache for the events table using the read strategy
 SELECT prewarm('events', 'read');
 ┌───────────────────────────┐
 │ prewarm('events', 'read') │
 │           int64           │
 ├───────────────────────────┤
-│            19             │
+│          4980736          │
 └───────────────────────────┘
 
--- Prewarm the os page cache for the events table using the prefetch strategy
--- which will use the OS-specific prefetch hints to prefetch the blocks into the page cache
+-- Prewarm the OS page cache for the events table using the prefetch strategy
+-- Uses OS-specific prefetch hints to prefetch the blocks into the page cache
 SELECT prewarm('events', 'prefetch');
 ┌───────────────────────────────┐
 │ prewarm('events', 'prefetch') │
-│           int64               │
+│             int64             │
 ├───────────────────────────────┤
-│              24               │
+│           6291456             │
 └───────────────────────────────┘
+
+
+#===--------------------------------------------------------------------===#
+# Remote Prewarm Example
+#===--------------------------------------------------------------------===#
+
+-- Configure cache_httpfs for on-disk caching
+SET cache_httpfs_type='on_disk';
+SET cache_httpfs_cache_directory='/tmp/duckdb_cache';
+
+-- Prewarm a remote CSV file (16222 bytes) into on-disk cache
+-- Returns precise bytes prewarmed, accounting for partial blocks
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv');
+┌────────────────────────┐
+│    prewarm_remote()    │
+│         int64          │
+├────────────────────────┤
+│                  16222 │
+└────────────────────────┘
+
+-- Prewarm with a size limit using human-readable string
+SET cache_httpfs_cache_block_size=1000;
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv', '3KB');
+┌────────────────────────┐
+│    prewarm_remote()    │
+│         int64          │
+├────────────────────────┤
+│                   3000 │
+└────────────────────────┘
 ```
 
-> **Note:** The returned block count may vary depending on compression and data layout. The count is approximate and for reference only.
+> **Note:** The returned byte count may vary depending on compression and data layout. The count is approximate and for reference only.
 
 ## Remote Prewarm
 
@@ -143,7 +196,7 @@ SELECT prewarm_remote('/tmp/cache_httpfs/data_*.csv');
 
 - [ ] Support prewarm with block ID range
 - [ ] Support prewarm for indexes
-- [x] Remote table and file support (leverage `cache_httpfs`)
+- [x] Remote table and file support (leverage `cache_httpfs`) https://github.com/dentiny/duckdb-cache-prewarm/issues/16
 - [ ] Autoprewarm (automatic cache warming on startup, similar to pg_prewarm's `autoprewarm`)
 
 ## License
