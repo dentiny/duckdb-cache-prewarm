@@ -1,6 +1,8 @@
 #include "cache_prewarm_extension.hpp"
 #include "core/block_collector.hpp"
 #include "core/prewarm_strategy_factory.hpp"
+#include "utils/include/parse_size.hpp"
+
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
@@ -71,13 +73,13 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 		mode = ParsePrewarmMode(args.GetValue(1, 0));
 	}
 
-	// Parse size limit in bytes (3rd argument)
+	// Parse size limit (3rd argument) - accepts human-readable sizes like '1GB', '100MB'
 	idx_t max_bytes = NumericLimits<idx_t>::Maximum();
 	bool has_size_limit = false;
 	if (args.ColumnCount() > 2) {
 		auto size_val = args.GetValue(2, 0);
 		if (!size_val.IsNull()) {
-			max_bytes = static_cast<idx_t>(size_val.GetValue<int64_t>());
+			max_bytes = ParseSizeLimit(size_val.ToString());
 			has_size_limit = true;
 		}
 	}
@@ -134,10 +136,15 @@ void RegisterPrewarmFunction(ExtensionLoader &loader) {
 	prewarm_set.AddFunction(ScalarFunction(/*arguments=*/ {/*table=*/LogicalType {LogicalTypeId::VARCHAR},
 	                                                       /*mode=*/LogicalType {LogicalTypeId::VARCHAR}},
 	                                       /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
-	// prewarm(table, mode, max_bytes)
+	// prewarm(table, mode, max_size) - max_size as raw bytes (BIGINT)
 	prewarm_set.AddFunction(ScalarFunction(/*arguments=*/ {/*table=*/LogicalType {LogicalTypeId::VARCHAR},
 	                                                       /*mode=*/LogicalType {LogicalTypeId::VARCHAR},
-	                                                       /*max_bytes=*/LogicalType {LogicalTypeId::BIGINT}},
+	                                                       /*max_size=*/LogicalType {LogicalTypeId::BIGINT}},
+	                                       /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
+	// prewarm(table, mode, max_size) - max_size as human-readable string like '1GB', '100MB'
+	prewarm_set.AddFunction(ScalarFunction(/*arguments=*/ {/*table=*/LogicalType {LogicalTypeId::VARCHAR},
+	                                                       /*mode=*/LogicalType {LogicalTypeId::VARCHAR},
+	                                                       /*max_size=*/LogicalType {LogicalTypeId::VARCHAR}},
 	                                       /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
 	loader.RegisterFunction(prewarm_set);
 }

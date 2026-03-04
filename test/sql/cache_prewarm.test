@@ -105,8 +105,24 @@ true
 
 restart
 
-# Test prewarm with size limit parameter (bytes)
+# Test prewarm with size limit parameter (human-readable format)
 query I
-SELECT prewarm('events', 'buffer', 'main', 1000000);
+SELECT prewarm('events', 'buffer', '1MB');
 ----
 786432
+
+restart
+
+# Test prewarm with size limit as raw bytes (BIGINT overload)
+query I
+SELECT prewarm('events', 'buffer', 1000000);
+----
+786432
+
+restart
+
+# Test prewarm with qualified table name (schema.table)
+query I
+SELECT prewarm('main.events', 'prefetch') > 7000000;
+----
+true
