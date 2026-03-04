@@ -61,9 +61,9 @@ public:
 	//! Returns number of blocks successfully prewarmed
 	//! If a provided block_id doesn't exist, it is silently skipped and not counted
 	//! in the return value. The method does not throw errors for non-existent blocks.
-	//! @param max_blocks Maximum number of blocks to prewarm (default: no limit)
+	//! @param max_blocks Maximum number of blocks to prewarm
 	virtual idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
-	                      idx_t max_blocks = NumericLimits<idx_t>::Maximum()) = 0;
+	                      idx_t max_blocks) = 0;
 
 protected:
 	//! Check if direct I/O is enabled and throw an exception if OS page cache strategies won't work

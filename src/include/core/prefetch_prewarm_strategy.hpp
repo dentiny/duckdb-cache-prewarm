@@ -11,8 +11,7 @@ public:
 	    : LocalPrewarmStrategy(context_p, block_manager_p, buffer_manager_p) {
 	}
 
-	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
-	              idx_t max_blocks = NumericLimits<idx_t>::Maximum()) override;
+	idx_t Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids, idx_t max_blocks) override;
 };
 
 } // namespace duckdb

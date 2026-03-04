@@ -18,8 +18,12 @@ SELECT prewarm('table_name');
 -- With explicit mode
 SELECT prewarm('table_name', 'buffer');
 
--- With schema specification
-SELECT prewarm('table_name', 'buffer', 'my_schema');
+-- With size limit (in bytes)
+SELECT prewarm('table_name', 'buffer', 1000000);
+
+-- With qualified table name (schema.table or database.schema.table)
+SELECT prewarm('my_schema.table_name');
+SELECT prewarm('my_database.my_schema.table_name', 'prefetch');
 ```
 
 ## Prewarm Modes

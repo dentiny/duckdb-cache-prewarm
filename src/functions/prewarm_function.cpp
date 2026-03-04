@@ -13,6 +13,7 @@
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/database_manager.hpp"
+#include "duckdb/parser/qualified_name.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/storage/data_table.hpp"
 #include "duckdb/storage/storage_manager.hpp"
@@ -57,12 +58,12 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 		throw InvalidInputException("Table name cannot be NULL");
 	}
 
-	// Parse table name (1st argument)
+	// Parse table name (1st argument), supports qualified names like "schema.table" or "database.schema.table"
 	auto table_val = args.GetValue(0, 0);
 	if (table_val.IsNull()) {
 		throw InvalidInputException("Table name cannot be NULL");
 	}
-	string table_name = table_val.ToString();
+	auto qualified_name = QualifiedName::Parse(table_val.ToString());
 
 	// Parse prewarm mode (2nd argument)
 	PrewarmMode mode = PrewarmMode::BUFFER;
@@ -70,25 +71,19 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 		mode = ParsePrewarmMode(args.GetValue(1, 0));
 	}
 
-	// Parse schema (3rd argument)
-	string schema = "main";
-	if (args.ColumnCount() > 2) {
-		auto schema_val = args.GetValue(2, 0);
-		if (!schema_val.IsNull()) {
-			schema = schema_val.ToString();
-		}
-	}
-
-	// Parse size limit in bytes (4th argument)
+	// Parse size limit in bytes (3rd argument)
 	idx_t max_bytes = NumericLimits<idx_t>::Maximum();
 	bool has_size_limit = false;
-	if (args.ColumnCount() > 3) {
-		auto size_val = args.GetValue(3, 0);
+	if (args.ColumnCount() > 2) {
+		auto size_val = args.GetValue(2, 0);
 		if (!size_val.IsNull()) {
 			max_bytes = static_cast<idx_t>(size_val.GetValue<int64_t>());
 			has_size_limit = true;
 		}
 	}
+
+	string schema = qualified_name.schema.empty() ? "main" : qualified_name.schema;
+	string table_name = qualified_name.name;
 
 	// Resolve against the catalog of the current default database
 	auto &db_manager = DatabaseManager::Get(DatabaseInstance::GetDatabase(context));
@@ -128,21 +123,22 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 //===--------------------------------------------------------------------===//
 
 void RegisterPrewarmFunction(ExtensionLoader &loader) {
-	// Register prewarm scalar function (supports optional mode and schema args)
+	// Register prewarm scalar function
+	// Signature: prewarm(table_name, [mode], [max_bytes])
+	// table_name supports qualified names: "table", "schema.table", or "database.schema.table"
 	ScalarFunctionSet prewarm_set("prewarm");
-	prewarm_set.AddFunction(ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}},
+	// prewarm(table)
+	prewarm_set.AddFunction(ScalarFunction(/*arguments=*/ {/*table=*/LogicalType {LogicalTypeId::VARCHAR}},
 	                                       /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
-	prewarm_set.AddFunction(
-	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::VARCHAR}},
-	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
-	prewarm_set.AddFunction(
-	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::VARCHAR},
-	                                   LogicalType {LogicalTypeId::VARCHAR}},
-	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
-	prewarm_set.AddFunction(
-	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::VARCHAR},
-	                                   LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::BIGINT}},
-	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
+	// prewarm(table, mode)
+	prewarm_set.AddFunction(ScalarFunction(/*arguments=*/ {/*table=*/LogicalType {LogicalTypeId::VARCHAR},
+	                                                       /*mode=*/LogicalType {LogicalTypeId::VARCHAR}},
+	                                       /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
+	// prewarm(table, mode, max_bytes)
+	prewarm_set.AddFunction(ScalarFunction(/*arguments=*/ {/*table=*/LogicalType {LogicalTypeId::VARCHAR},
+	                                                       /*mode=*/LogicalType {LogicalTypeId::VARCHAR},
+	                                                       /*max_bytes=*/LogicalType {LogicalTypeId::BIGINT}},
+	                                       /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
 	loader.RegisterFunction(prewarm_set);
 }
 
