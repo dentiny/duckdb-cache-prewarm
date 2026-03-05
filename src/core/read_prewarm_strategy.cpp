@@ -131,7 +131,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 	executor.WorkOnTasks();
 	blocks_read = parallel_blocks_read;
 
-	return blocks_read;
+	return blocks_read * block_size;
 }
 
 } // namespace duckdb

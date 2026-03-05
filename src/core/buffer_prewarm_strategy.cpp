@@ -89,7 +89,7 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 	}
 	executor.WorkOnTasks();
 
-	return unloaded_handles.size();
+	return unloaded_handles.size() * capacity_info.block_size;
 }
 
 } // namespace duckdb

@@ -107,14 +107,13 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	unordered_set<block_id_t> block_ids = BlockCollector::CollectTableBlocks(duck_table);
 
 	// Execute prewarm using the appropriate strategy
-	idx_t blocks_prewarmed = 0;
+	idx_t bytes_prewarmed = 0;
 	if (!block_ids.empty()) {
-		auto strategy =
-		    CreateLocalPrewarmStrategy(context, mode, block_manager, BufferManager::GetBufferManager(context));
-		blocks_prewarmed = strategy->Execute(duck_table, block_ids, max_blocks);
+		auto strategy = CreateLocalPrewarmStrategy(context, mode, StorageManager::Get(*default_db).GetBlockManager(),
+		                                           BufferManager::GetBufferManager(context));
+		bytes_prewarmed = strategy->Execute(duck_table, block_ids, max_blocks);
 	}
 
-	idx_t bytes_prewarmed = blocks_prewarmed * block_size;
 	result.SetVectorType(VectorType::CONSTANT_VECTOR);
 	auto result_data = ConstantVector::GetData<int64_t>(result);
 	result_data[0] = NumericCast<int64_t>(bytes_prewarmed);

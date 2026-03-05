@@ -89,7 +89,7 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 	}
 	executor.WorkOnTasks();
 
-	return blocks_prefetched;
+	return blocks_prefetched * block_size;
 
 #else
 	// Non-Unix platforms not supported

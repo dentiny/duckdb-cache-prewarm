@@ -58,7 +58,7 @@ public:
 	}
 
 	//! Execute prewarm operation on the given table and blocks
-	//! Returns number of blocks successfully prewarmed
+	//! Returns number of bytes successfully prewarmed
 	//! If a provided block_id doesn't exist, it is silently skipped and not counted
 	//! in the return value. The method does not throw errors for non-existent blocks.
 	//! @param max_blocks Maximum number of blocks to prewarm
