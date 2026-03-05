@@ -25,6 +25,7 @@ set(EXTENSION_SOURCES
     src/core/read_prewarm_strategy.cpp
     src/core/remote_block_collector.cpp
     src/core/remote_prewarm_strategy.cpp
+    src/utils/parse_size.cpp
     src/functions/prewarm_function.cpp
     src/functions/prewarm_remote_function.cpp
 
@@ -78,8 +79,10 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
-target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
-target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
+target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto
+                      CURL::libcurl)
+target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto
+                      CURL::libcurl)
 
 if(MINGW OR WIN32)
   target_link_libraries(${EXTENSION_NAME} crypt32)

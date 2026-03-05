@@ -126,3 +126,17 @@ query I
 SELECT prewarm('main.events', 'prefetch') > 7000000;
 ----
 true
+
+restart
+
+# Test prewarm with fully qualified table name (database.schema.table)
+query I
+SELECT prewarm('cache_prewarm.main.events', 'prefetch') > 7000000;
+----
+true
+
+# Test prewarm with non-existent database name
+statement error
+SELECT prewarm('nonexistent_db.main.events', 'buffer');
+----
+Database 'nonexistent_db' not found

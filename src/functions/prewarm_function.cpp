@@ -85,18 +85,22 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	}
 
 	string schema = qualified_name.schema.empty() ? "main" : qualified_name.schema;
-	string table_name = qualified_name.name;
+	string table_name = std::move(qualified_name.name);
 
-	// Resolve against the catalog of the current default database
+	// Resolve the database: use the catalog from the qualified name if specified, otherwise use the default database
 	auto &db_manager = DatabaseManager::Get(DatabaseInstance::GetDatabase(context));
-	auto &default_db_name = db_manager.GetDefaultDatabase(context);
-	shared_ptr<AttachedDatabase> default_db = db_manager.GetDatabase(default_db_name);
-	auto &catalog = default_db->GetCatalog();
+	string db_name =
+	    qualified_name.catalog == INVALID_CATALOG ? db_manager.GetDefaultDatabase(context) : qualified_name.catalog;
+	shared_ptr<AttachedDatabase> db = db_manager.GetDatabase(db_name);
+	if (!db) {
+		throw InvalidInputException("Database '%s' not found", db_name);
+	}
+	auto &catalog = db->GetCatalog();
 	auto &table_catalog_entry = catalog.GetEntry<TableCatalogEntry>(context, schema, table_name);
 	auto &duck_table = table_catalog_entry.Cast<DuckTableEntry>();
 
 	// Convert max_bytes to max_blocks using the block size
-	auto &block_manager = StorageManager::Get(*default_db).GetBlockManager();
+	auto &block_manager = StorageManager::Get(*db).GetBlockManager();
 	idx_t block_size = block_manager.GetBlockAllocSize();
 	idx_t max_blocks = NumericLimits<idx_t>::Maximum();
 	if (has_size_limit) {
@@ -109,7 +113,7 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	// Execute prewarm using the appropriate strategy
 	idx_t bytes_prewarmed = 0;
 	if (!block_ids.empty()) {
-		auto strategy = CreateLocalPrewarmStrategy(context, mode, StorageManager::Get(*default_db).GetBlockManager(),
+		auto strategy = CreateLocalPrewarmStrategy(context, mode, StorageManager::Get(*db).GetBlockManager(),
 		                                           BufferManager::GetBufferManager(context));
 		bytes_prewarmed = strategy->Execute(duck_table, block_ids, max_blocks);
 	}
