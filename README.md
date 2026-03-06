@@ -184,7 +184,7 @@ SELECT prewarm_remote('/tmp/cache_httpfs/data_*.csv');
 | `pattern` | **(Required)** URL or file path pattern to prewarm. Supports glob patterns. |
 | `max_blocks` | **(Optional)** Maximum number of blocks to prewarm. Defaults to unlimited. |
 
-> **Note:** `prewarm_remote` requires the `cache_httpfs` extension to be loaded. The block size is determined by the `cache_httpfs_cache_block_size` setting.
+> **Note:** `prewarm_remote` loads `cache_httpfs` extension internally. The block size is determined by the `cache_httpfs_cache_block_size` setting.
 > **Note:** The returned byte count includes all blocks processed, even if they were already cached in memory or on local disk. Blocks that are already warm are still counted toward the prewarmed bytes total.
 
 ## When to Use
