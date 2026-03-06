@@ -129,7 +129,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Single Block (Mock)", "[remote_prewar
 
 	auto result = strategy.Execute(file_blocks, 100);
 
-	REQUIRE(result == 1);
+	REQUIRE(result == 1024);
 
 	// Verify OpenFile was called for the file
 	REQUIRE(mock_fs.GetOpenFileCallCount() == 1);
@@ -178,7 +178,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Multiple Blocks Same File (Mock)", "[
 
 	auto result = strategy.Execute(file_blocks, 1000);
 
-	REQUIRE(result == num_blocks);
+	REQUIRE(result == num_blocks * block_size);
 
 	// Verify OpenFile was called once (same file)
 	REQUIRE(mock_fs.GetOpenFileCallCount() == 1);
@@ -228,7 +228,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute Multiple Files (Mock)", "[remote_prew
 
 	auto result = strategy.Execute(file_blocks, 100);
 
-	REQUIRE(result == 3); // 1 + 2 blocks
+	REQUIRE(result == 3 * block_size); // 1 + 2 blocks
 
 	// Verify OpenFile was called for each file
 	REQUIRE(mock_fs.GetOpenFileCallCount() == 2);
@@ -273,7 +273,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute with Max Blocks Limit (Mock)", "[remo
 	auto result = strategy.Execute(file_blocks, max_blocks);
 
 	// Result should be limited by max_blocks
-	REQUIRE(result <= max_blocks);
+	REQUIRE(result <= max_blocks * block_size);
 
 	// Verify file received limited Read() calls
 	REQUIRE(mock_fs.GetReadCallCount(file_path) <= max_blocks);
@@ -320,7 +320,7 @@ TEST_CASE("RemotePrewarmStrategy - Execute with Capacity Limit (Mock)", "[remote
 	auto result = strategy.Execute(file_blocks, 100);
 
 	// Result should be limited by capacity
-	REQUIRE(result == capacity_limit);
+	REQUIRE(result == capacity_limit * block_size);
 
 	// Verify file received limited Read() calls
 	REQUIRE(mock_fs.GetReadCallCount(file_path) == capacity_limit);
