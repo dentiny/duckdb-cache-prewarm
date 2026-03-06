@@ -19,8 +19,8 @@ RemoteFileBlockMap RemoteBlockCollector::CollectRemoteBlocks(FileSystem &fs, con
 
 	// Process each file
 	for (const auto &file_info : glob_results) {
-		auto file_handle = fs.OpenFile(file_info.path,
-		                               FileOpenFlags::FILE_FLAGS_READ | FileOpenFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS);
+		auto file_handle =
+		    fs.OpenFile(file_info.path, FileOpenFlags::FILE_FLAGS_READ | FileOpenFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS);
 		if (!file_handle) {
 			// TODO: add a debug logging that we skipped file
 			continue;

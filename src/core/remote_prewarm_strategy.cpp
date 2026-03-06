@@ -56,7 +56,8 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 			continue;
 		}
 		uncached_file_blocks[file_path] = std::move(uncached_blocks);
-		auto file_handle = fs.OpenFile(file_path, FileOpenFlags::FILE_FLAGS_READ | FileOpenFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS);
+		auto file_handle =
+		    fs.OpenFile(file_path, FileOpenFlags::FILE_FLAGS_READ | FileOpenFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS);
 		if (!file_handle) {
 			// TODO: add a debug logging that we skipped file
 			continue;
@@ -86,6 +87,7 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 	vector<std::future<void>> prewarm_futures;
 	prewarm_futures.reserve(blocks_to_prewarm);
 	idx_t prewarmed_blocks = 0;
+	idx_t bytes_prewarmed = 0;
 	for (const auto &blocks : uncached_file_blocks) {
 		const auto &file_path = blocks.first;
 		const auto &block_list = blocks.second;
@@ -102,6 +104,7 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 				file_handle->Read(buffer.get(), block.size, block.offset);
 			});
 			prewarm_futures.emplace_back(std::move(future));
+			bytes_prewarmed += static_cast<idx_t>(block.size);
 			prewarmed_blocks++;
 		}
 	}
@@ -110,7 +113,7 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 		future.get();
 	}
 
-	return blocks_to_prewarm;
+	return bytes_prewarmed;
 }
 
 } // namespace duckdb
