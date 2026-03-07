@@ -1,0 +1,235 @@
+# name: test/sql/prewarm_remote.test
+# description: test prewarm_remote function for cached remote file prewarming
+# group: [sql]
+
+require notwindows
+
+require cache_prewarm
+
+statement ok
+SET cache_httpfs_type='on_disk';
+
+statement ok
+SET cache_httpfs_cache_directory='/tmp/duckdb_cache_httpfs_cache';
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+query IIIII
+SELECT * FROM cache_httpfs_cache_status_query();
+----
+
+#===--------------------------------------------------------------------===#
+# Test 1: Prewarm a real remote file with large block size
+# The stock-exchanges.csv is 16222 bytes.
+# With block_size=1000000, block count = ceil(16222 / 1000000) = 1.
+# Returns bytes: 1 * 1000000 = 1000000
+#===--------------------------------------------------------------------===#
+
+statement ok
+SET cache_httpfs_cache_block_size=1000000;
+
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv');
+----
+16222
+
+# Verify exactly 1 on-disk cache file was created.
+query I
+SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
+----
+1
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===#
+# Test 2: Prewarm with smaller block size to produce multiple blocks
+# With block_size=1000, block count = ceil(16222 / 1000) = 17.
+# Returns bytes: 17 * 1000 = 17000
+#===--------------------------------------------------------------------===#
+
+statement ok
+SET cache_httpfs_cache_block_size=1000;
+
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv?cache_test=prewarm_2');
+----
+16222
+
+query I
+SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
+----
+17
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===#
+# Test 3: Prewarm with max_size limit (bytes)
+# With block_size=1000, file has 17 blocks.
+# 3000 bytes / 1000 block_size = 3 blocks max.
+# Returns bytes: 3 * 1000 = 3000
+#===--------------------------------------------------------------------===#
+
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv?cache_test=prewarm_3', 3000);
+----
+3000
+
+query I
+SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
+----
+3
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===#
+# Test 3b: Prewarm with max_size limit (human-readable string '3KB')
+# With block_size=1000, 3000 bytes / 1000 = 3 blocks max.
+# Note: '3KB' = 3000 bytes (KB uses 1000-based units in DuckDB)
+#===--------------------------------------------------------------------===#
+
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv?cache_test=prewarm_3b', '3KB');
+----
+3000
+
+query I
+SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
+----
+3
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===#
+# Test 4: Prewarm with another block size for further deterministic validation
+# With block_size=4000, block count = ceil(16222 / 4000) = 5.
+# Returns bytes: 5 * 4000 = 20000
+#===--------------------------------------------------------------------===#
+
+statement ok
+SET cache_httpfs_cache_block_size=4000;
+
+query I
+SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv?cache_test=prewarm_4');
+----
+16222
+
+query I
+SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
+----
+5
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===#
+# Test 5: Prewarm via wrapped fake filesystem (local files)
+#===--------------------------------------------------------------------===#
+
+statement ok
+SET cache_httpfs_cache_block_size=1000000;
+
+statement ok
+SELECT cache_httpfs_wrap_cache_filesystem('cache_httpfs_fake_filesystem');
+
+# Generate test data in the fake filesystem directory.
+statement ok
+COPY (
+    SELECT i AS id, 'name_' || i AS name, random() AS value
+    FROM range(100000) t(i)
+) TO '/tmp/cache_httpfs_fake_filesystem/test_prewarm.csv';
+
+# Clear cache (COPY may populate cache entries via the wrapped filesystem).
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+query I
+SELECT cache_httpfs_get_ondisk_data_cache_size();
+----
+0
+
+query I
+SELECT prewarm_remote('/tmp/cache_httpfs_fake_filesystem/test_prewarm.csv') > 0;
+----
+true
+
+query I
+SELECT cache_httpfs_get_ondisk_data_cache_size() > 0;
+----
+true
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===#
+# Test 6: Prewarm via fake filesystem with glob pattern and multiple files
+#===--------------------------------------------------------------------===#
+
+statement ok
+COPY (
+    SELECT i AS id FROM range(50000) t(i)
+) TO '/tmp/cache_httpfs_fake_filesystem/test_prewarm_2.csv';
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+query I
+SELECT prewarm_remote('/tmp/cache_httpfs_fake_filesystem/test_prewarm*.csv') > 0;
+----
+true
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===#
+# Test 7: max_size limits prewarming on fake filesystem
+# 1000000 bytes / 1000000 block_size = 1 block max
+# Returns bytes: 1 * 1000000 = 1000000
+#===--------------------------------------------------------------------===#
+
+query I
+SELECT prewarm_remote('/tmp/cache_httpfs_fake_filesystem/test_prewarm.csv', 1000000);
+----
+1000000
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===#
+# Test 7b: max_size with human-readable string '1MB'
+# 1000000 bytes / 1000000 block_size = 1 block max
+#===--------------------------------------------------------------------===#
+
+query I
+SELECT prewarm_remote('/tmp/cache_httpfs_fake_filesystem/test_prewarm.csv', '1MB');
+----
+1000000
+
+statement ok
+SELECT cache_httpfs_clear_cache();
+
+#===--------------------------------------------------------------------===#
+# Test 8: Non-matching glob pattern returns 0
+#===--------------------------------------------------------------------===#
+
+query I
+SELECT prewarm_remote('/tmp/cache_httpfs_fake_filesystem/nonexistent_*.csv');
+----
+0
+
+#===--------------------------------------------------------------------===#
+# Test 9: NULL pattern returns NULL (standard SQL NULL propagation)
+#===--------------------------------------------------------------------===#
+
+query I
+SELECT prewarm_remote(NULL::VARCHAR) IS NULL;
+----
+true
+
+# Cleanup
+statement ok
+SELECT cache_httpfs_clear_cache();

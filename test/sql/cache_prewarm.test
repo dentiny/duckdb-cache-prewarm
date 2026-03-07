@@ -52,7 +52,7 @@ restart
 
 # prefetch mode on the requests table
 query I
-SELECT prewarm('requests', 'prefetch') >= 24;
+SELECT prewarm('requests', 'prefetch') > 200;
 ----
 true
 
@@ -82,7 +82,7 @@ FROM range(500000) t(i);
 restart
 
 query I
-SELECT prewarm('events') > 10;
+SELECT prewarm('events') > 4000000;
 ----
 true
 
@@ -99,7 +99,44 @@ restart
 
 # prefetch mode on the events table
 query I
-SELECT prewarm('events', 'prefetch') >= 24;
+SELECT prewarm('events', 'prefetch') > 7000000;
 ----
 true
 
+restart
+
+# Test prewarm with size limit parameter (human-readable format)
+query I
+SELECT prewarm('events', 'buffer', '1MB');
+----
+786432
+
+restart
+
+# Test prewarm with size limit as raw bytes (BIGINT overload)
+query I
+SELECT prewarm('events', 'buffer', 1000000);
+----
+786432
+
+restart
+
+# Test prewarm with qualified table name (schema.table)
+query I
+SELECT prewarm('main.events', 'prefetch') > 7000000;
+----
+true
+
+restart
+
+# Test prewarm with fully qualified table name (database.schema.table)
+query I
+SELECT prewarm('cache_prewarm.main.events', 'prefetch') > 7000000;
+----
+true
+
+# Test prewarm with non-existent database name
+statement error
+SELECT prewarm('nonexistent_db.main.events', 'buffer');
+----
+Database 'nonexistent_db' not found

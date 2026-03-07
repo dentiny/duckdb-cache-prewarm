@@ -1,0 +1,95 @@
+#include "functions/prewarm_remote_function.hpp"
+
+#include "cache_httpfs_instance_state.hpp"
+#include "core/remote_block_collector.hpp"
+#include "core/remote_prewarm_strategy.hpp"
+#include "utils/include/parse_size.hpp"
+
+#include "duckdb/common/exception.hpp"
+#include "duckdb/common/string_util.hpp"
+#include "duckdb/function/scalar_function.hpp"
+#include "duckdb/main/database.hpp"
+
+namespace duckdb {
+
+//===--------------------------------------------------------------------===//
+// Prewarm Remote Scalar Function Implementation
+//===--------------------------------------------------------------------===//
+namespace {
+
+void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &result) {
+	auto &context = state.GetContext();
+
+	// Validate arguments
+	if (args.ColumnCount() == 0) {
+		throw InvalidInputException("prewarm_remote requires at least one argument");
+	}
+
+	auto pattern_val = args.GetValue(0, 0);
+	if (pattern_val.IsNull()) {
+		throw InvalidInputException("Pattern cannot be NULL");
+	}
+	string pattern = pattern_val.ToString();
+
+	auto &instance_state = GetInstanceStateOrThrow(context);
+	idx_t block_size = instance_state.config.cache_block_size;
+
+	// Parse optional max_size and convert to max_blocks - accepts human-readable sizes like '1GB', '100MB'
+	idx_t max_blocks = std::numeric_limits<idx_t>::max();
+	if (args.ColumnCount() > 1) {
+		auto max_size_val = args.GetValue(1, 0);
+		if (!max_size_val.IsNull()) {
+			idx_t max_bytes = ParseSizeLimit(max_size_val.ToString());
+			max_blocks = max_bytes / block_size;
+		}
+	}
+
+	// Get filesystem from database
+	auto &db = DatabaseInstance::GetDatabase(context);
+	// OpenerFileSystem(fs) -> VirtualFileSystem -> CacheFileSystem
+	auto &fs = db.GetFileSystem();
+
+	// Collect remote blocks
+	auto blocks = RemoteBlockCollector::CollectRemoteBlocks(fs, pattern, block_size);
+
+	// Execute prewarm strategy
+	idx_t bytes_prewarmed = 0;
+	if (!blocks.empty()) {
+		RemotePrewarmStrategy strategy(context, fs);
+		bytes_prewarmed = strategy.Execute(blocks, max_blocks);
+	}
+
+	result.SetVectorType(VectorType::CONSTANT_VECTOR);
+	auto result_data = ConstantVector::GetData<int64_t>(result);
+	result_data[0] = NumericCast<int64_t>(bytes_prewarmed);
+}
+
+} // namespace
+
+//===--------------------------------------------------------------------===//
+// Function Registration
+//===--------------------------------------------------------------------===//
+
+void RegisterPrewarmRemoteFunction(ExtensionLoader &loader) {
+	// Register prewarm_remote scalar function with multiple signatures
+	ScalarFunctionSet prewarm_remote_set("prewarm_remote");
+
+	// prewarm_remote(pattern)
+	prewarm_remote_set.AddFunction(ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}},
+	                                              /*return_type=*/LogicalType {LogicalTypeId::BIGINT},
+	                                              PrewarmRemoteFunction));
+
+	// prewarm_remote(pattern, max_size) - max_size as raw bytes (BIGINT)
+	prewarm_remote_set.AddFunction(
+	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::BIGINT}},
+	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmRemoteFunction));
+
+	// prewarm_remote(pattern, max_size) - max_size as human-readable string like '1GB', '100MB'
+	prewarm_remote_set.AddFunction(
+	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::VARCHAR}},
+	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmRemoteFunction));
+
+	loader.RegisterFunction(prewarm_remote_set);
+}
+
+} // namespace duckdb

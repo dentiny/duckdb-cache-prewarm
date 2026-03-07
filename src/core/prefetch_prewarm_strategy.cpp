@@ -40,7 +40,8 @@ private:
 
 } // namespace
 
-idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids) {
+idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
+                                       idx_t max_blocks) {
 	CheckDirectIO("PREFETCH");
 
 	auto block_size = block_manager.GetBlockAllocSize();
@@ -51,16 +52,17 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 	auto total_blocks = sorted_blocks.size();
 
 	auto capacity_info = CalculateMaxAvailableBlocks();
-	if (total_blocks > capacity_info.max_blocks) {
-		idx_t blocks_skipped = total_blocks - capacity_info.max_blocks;
-		sorted_blocks.resize(capacity_info.max_blocks);
+	idx_t effective_max = std::min(capacity_info.max_blocks, max_blocks);
+	if (total_blocks > effective_max) {
+		idx_t blocks_skipped = total_blocks - effective_max;
+		sorted_blocks.resize(effective_max);
 
 		DUCKDB_LOG_WARNING(context,
 		                "Maximum blocks to prefetch limit reached.\n"
 		                "  Table blocks: %llu\n"
-		                "  Prewarming: %llu blocks (skipping %llu due to capacity)\n"
+		                "  Prewarming: %llu blocks (skipping %llu due to limit)\n"
 		                "  Current available memory: %llu bytes, consider increasing memory_limit",
-		                total_blocks, capacity_info.max_blocks, blocks_skipped, capacity_info.available_space);
+		                total_blocks, effective_max, blocks_skipped, capacity_info.available_space);
 		total_blocks = sorted_blocks.size();
 	}
 
@@ -87,7 +89,7 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 	}
 	executor.WorkOnTasks();
 
-	return blocks_prefetched;
+	return blocks_prefetched * block_size;
 
 #else
 	// Non-Unix platforms not supported
