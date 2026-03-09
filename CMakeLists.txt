@@ -25,52 +25,54 @@ set(EXTENSION_SOURCES
     src/core/read_prewarm_strategy.cpp
     src/core/remote_block_collector.cpp
     src/core/remote_prewarm_strategy.cpp
-    src/utils/parse_size.cpp
     src/functions/prewarm_function.cpp
     src/functions/prewarm_remote_function.cpp
+    src/utils/parse_size.cpp
 
-    # duck-read-cache-fs sources
-    duck-read-cache-fs/src/cache_httpfs_extension.cpp
-    duck-read-cache-fs/src/cache_filesystem_config.cpp
-    duck-read-cache-fs/src/cache_httpfs_instance_state.cpp
-    duck-read-cache-fs/src/cache_filesystem.cpp
-    duck-read-cache-fs/src/cache_entry_info.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/create_secret_functions.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/crypto.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/hash_functions.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/hffs.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http_state.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/httpfs.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/httpfs_curl_client.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/httpfs_extension.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/httpfs_httplib_client.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3_multi_part_upload.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3fs.cpp
     duck-read-cache-fs/src/base_profile_collector.cpp
-    duck-read-cache-fs/src/noop_profile_collector.cpp
-    duck-read-cache-fs/src/temp_profile_collector.cpp
-    duck-read-cache-fs/src/noop_cache_reader.cpp
-    duck-read-cache-fs/src/in_memory_cache_reader.cpp
-    duck-read-cache-fs/src/disk_cache_reader.cpp
-    duck-read-cache-fs/src/cache_read_chunk.cpp
-    duck-read-cache-fs/src/io_operations.cpp
+    duck-read-cache-fs/src/cache_entry_info.cpp
     duck-read-cache-fs/src/cache_exclusion_manager.cpp
     duck-read-cache-fs/src/cache_exclusion_utils.cpp
-    duck-read-cache-fs/src/histogram.cpp
-    duck-read-cache-fs/src/disk_cache_util.cpp
-    duck-read-cache-fs/src/in_mem_cache_block.cpp
-    duck-read-cache-fs/src/utils/filesystem_utils.cpp
-    duck-read-cache-fs/src/utils/thread_utils.cpp
-    duck-read-cache-fs/src/utils/thread_pool.cpp
-    duck-read-cache-fs/src/utils/chunk_utils.cpp
-    duck-read-cache-fs/src/utils/time_utils.cpp
-    duck-read-cache-fs/src/utils/fake_filesystem.cpp
-    duck-read-cache-fs/src/utils/mock_filesystem.cpp
-    duck-read-cache-fs/src/utils/scoped_directory.cpp
-    duck-read-cache-fs/src/utils/hash_utils.cpp
-    duck-read-cache-fs/src/utils/url_utils.cpp
+    duck-read-cache-fs/src/cache_filesystem.cpp
+    duck-read-cache-fs/src/cache_filesystem_config.cpp
+    duck-read-cache-fs/src/cache_httpfs_extension.cpp
+    duck-read-cache-fs/src/cache_httpfs_extension_callback.cpp
+    duck-read-cache-fs/src/cache_httpfs_instance_state.cpp
+    duck-read-cache-fs/src/cache_read_chunk.cpp
     duck-read-cache-fs/src/cache_status_query_function.cpp
+    duck-read-cache-fs/src/disk_cache_reader.cpp
+    duck-read-cache-fs/src/disk_cache_util.cpp
     duck-read-cache-fs/src/extension_config_query_function.cpp
     duck-read-cache-fs/src/filesystem_status_query_function.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/hash_functions.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/httpfs_extension.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/httpfs.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/s3fs.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/hffs.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/httpfs_curl_client.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/httpfs_httplib_client.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/http_state.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/create_secret_functions.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/crypto.cpp)
+    duck-read-cache-fs/src/histogram.cpp
+    duck-read-cache-fs/src/in_mem_cache_block.cpp
+    duck-read-cache-fs/src/in_memory_cache_reader.cpp
+    duck-read-cache-fs/src/io_operations.cpp
+    duck-read-cache-fs/src/noop_cache_reader.cpp
+    duck-read-cache-fs/src/noop_profile_collector.cpp
+    duck-read-cache-fs/src/temp_profile_collector.cpp
+    duck-read-cache-fs/src/utils/chunk_utils.cpp
+    duck-read-cache-fs/src/utils/fake_filesystem.cpp
+    duck-read-cache-fs/src/utils/filesystem_utils.cpp
+    duck-read-cache-fs/src/utils/hash_utils.cpp
+    duck-read-cache-fs/src/utils/mock_filesystem.cpp
+    duck-read-cache-fs/src/utils/page_aligned_data_chunk.cpp
+    duck-read-cache-fs/src/utils/scoped_directory.cpp
+    duck-read-cache-fs/src/utils/thread_pool.cpp
+    duck-read-cache-fs/src/utils/thread_utils.cpp
+    duck-read-cache-fs/src/utils/time_utils.cpp
+    duck-read-cache-fs/src/utils/url_utils.cpp)
 
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
