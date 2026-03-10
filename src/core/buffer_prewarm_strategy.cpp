@@ -61,7 +61,7 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 		idx_t blocks_skipped = unloaded_handles.size() - effective_max;
 		unloaded_handles.resize(effective_max);
 
-		DUCKDB_LOG_WARN(context,
+		DUCKDB_LOG_WARNING(context,
 		                "Buffer pool capacity limit reached.\n"
 		                "  Table blocks: %llu total (%llu already cached, %llu unloaded)\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to limit)\n"

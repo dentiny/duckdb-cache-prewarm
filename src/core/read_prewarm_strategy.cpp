@@ -37,7 +37,7 @@ public:
 			// TODO: the SingleFileBlockManager::ReadBlock sometimes throws file out-of-bounds exception, we have to do
 			// further investigation and fix it.
 			// https://github.com/dentiny/duckdb-cache-prewarm/issues/23
-			DUCKDB_LOG_WARN(context, "READ prewarm failed for block %lld (count %llu): %s",
+			DUCKDB_LOG_WARNING(context, "READ prewarm failed for block %lld (count %llu): %s",
 			                static_cast<int64_t>(first_block_id), static_cast<uint64_t>(block_count), e.what());
 		}
 	}
@@ -74,7 +74,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 	idx_t total_blocks = unloaded_handles.size();
 	idx_t max_batch_size = effective_max;
 	if (max_batch_size == 0) {
-		DUCKDB_LOG_WARN(context,
+		DUCKDB_LOG_WARNING(context,
 		                "Insufficient memory to prewarm any blocks (available: %llu bytes, block size: %llu bytes)",
 		                capacity_info.available_space, capacity_info.block_size);
 		return 0;
@@ -83,7 +83,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 		idx_t blocks_skipped = total_blocks - effective_max;
 		unloaded_handles.resize(effective_max);
 
-		DUCKDB_LOG_WARN(context,
+		DUCKDB_LOG_WARNING(context,
 		                "Maximum blocks to read limit reached.\n"
 		                "  Table blocks: %llu\n"
 		                "  Prewarming: %llu blocks (skipping %llu due to limit)\n"
