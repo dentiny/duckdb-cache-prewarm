@@ -74,13 +74,13 @@ set(EXTENSION_SOURCES
     duck-read-cache-fs/src/utils/time_utils.cpp
     duck-read-cache-fs/src/utils/url_utils.cpp)
 
-build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
-build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
-
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 
 include_directories(${OPENSSL_INCLUDE_DIR})
+
+build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
+build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto
                       CURL::libcurl)
 target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto
