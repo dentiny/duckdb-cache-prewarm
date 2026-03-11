@@ -74,9 +74,6 @@ set(EXTENSION_SOURCES
     duck-read-cache-fs/src/utils/time_utils.cpp
     duck-read-cache-fs/src/utils/url_utils.cpp)
 
-# Build as shared library.
-set(BUILD_SHARED_LIBS ON)
-
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
