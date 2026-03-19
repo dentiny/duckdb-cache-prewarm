@@ -1,6 +1,6 @@
 # DuckDB Cache Prewarm
 
-A DuckDB extension that preloads table data blocks into the buffer pool or OS page cache, inspired by PostgreSQL's [`pg_prewarm`](https://www.postgresql.org/docs/current/pgprewarm.html) extension.
+A [DuckDB extension](https://duckdb.org/community_extensions/extensions/cache_prewarm) that preloads table data blocks into the buffer pool or OS page cache, inspired by PostgreSQL's [`pg_prewarm`](https://www.postgresql.org/docs/current/pgprewarm.html) extension.
 
 ## Installation
 
