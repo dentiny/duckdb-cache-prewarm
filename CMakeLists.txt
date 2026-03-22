@@ -7,6 +7,14 @@ set(CMAKE_CXX_STANDARD 14)
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
 
+# Override DuckDB encryption library, mimics httpfs extension behavior.
+if(NOT EMSCRIPTEN)
+  add_definitions(-DOVERRIDE_ENCRYPTION_UTILS=1)
+else()
+  set(DUCKDB_EXTENSION_HTTPFS_LINKED_LIBS
+      "../../third_party/mbedtls/libduckdb_mbedtls.a")
+endif()
+
 project(${TARGET_NAME})
 include_directories(src/include)
 include_directories(duck-read-cache-fs/src/include)
@@ -28,7 +36,6 @@ set(EXTENSION_SOURCES
     src/functions/prewarm_function.cpp
     src/functions/prewarm_remote_function.cpp
     src/utils/parse_size.cpp
-
     duck-read-cache-fs/duckdb-httpfs/src/create_secret_functions.cpp
     duck-read-cache-fs/duckdb-httpfs/src/crypto.cpp
     duck-read-cache-fs/duckdb-httpfs/src/hash_functions.cpp
