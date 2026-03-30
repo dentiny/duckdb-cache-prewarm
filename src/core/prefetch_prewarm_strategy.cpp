@@ -58,11 +58,11 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 		sorted_blocks.resize(effective_max);
 
 		DUCKDB_LOG_WARNING(context,
-		                "Maximum blocks to prefetch limit reached.\n"
-		                "  Table blocks: %llu\n"
-		                "  Prewarming: %llu blocks (skipping %llu due to limit)\n"
-		                "  Current available memory: %llu bytes, consider increasing memory_limit",
-		                total_blocks, effective_max, blocks_skipped, capacity_info.available_space);
+		                   "Maximum blocks to prefetch limit reached.\n"
+		                   "  Table blocks: %llu\n"
+		                   "  Prewarming: %llu blocks (skipping %llu due to limit)\n"
+		                   "  Current available memory: %llu bytes, consider increasing memory_limit",
+		                   total_blocks, effective_max, blocks_skipped, capacity_info.available_space);
 		total_blocks = sorted_blocks.size();
 	}
 
