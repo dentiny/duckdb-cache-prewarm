@@ -62,12 +62,12 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 		unloaded_handles.resize(effective_max);
 
 		DUCKDB_LOG_WARNING(context,
-		                "Buffer pool capacity limit reached.\n"
-		                "  Table blocks: %llu total (%llu already cached, %llu unloaded)\n"
-		                "  Prewarming: %llu blocks (skipping %llu due to limit)\n"
-		                "  Memory: %llu bytes available, %llu bytes required for all unloaded blocks",
-		                total_blocks, already_cached, blocks_to_prewarm, effective_max, blocks_skipped,
-		                capacity_info.available_space, blocks_to_prewarm * capacity_info.block_size);
+		                   "Buffer pool capacity limit reached.\n"
+		                   "  Table blocks: %llu total (%llu already cached, %llu unloaded)\n"
+		                   "  Prewarming: %llu blocks (skipping %llu due to limit)\n"
+		                   "  Memory: %llu bytes available, %llu bytes required for all unloaded blocks",
+		                   total_blocks, already_cached, blocks_to_prewarm, effective_max, blocks_skipped,
+		                   capacity_info.available_space, blocks_to_prewarm * capacity_info.block_size);
 	}
 
 	auto thread_count = std::max(1, TaskScheduler::GetScheduler(context).NumberOfThreads());
