@@ -2,6 +2,7 @@
 
 #include "cache_httpfs_extension.hpp"
 #include "cache_prewarm_extension.hpp"
+#include "functions/prewarm_parquet_metadata_function.hpp"
 #include "functions/prewarm_function.hpp"
 #include "functions/prewarm_remote_function.hpp"
 #include "duckdb.hpp"
@@ -15,6 +16,7 @@ constexpr const char *CACHE_HTTPFS_EXTENSION = "cache_httpfs";
 
 void LoadInternal(ExtensionLoader &loader) {
 	LoadCacheHttpfsExtensionIfNeeded(loader);
+	RegisterPrewarmParquetMetadataFunction(loader);
 	RegisterPrewarmFunction(loader);
 	RegisterPrewarmRemoteFunction(loader);
 }
