@@ -1,0 +1,61 @@
+# name: test/sql/prewarm_parquet_metadata.test
+# description: test parquet metadata prewarming
+# group: [sql]
+
+require cache_prewarm
+
+query I
+SELECT prewarm_parquet_metadata('duckdb/data/parquet-testing/cache/cache1.parquet') > 0;
+----
+true
+
+require parquet
+
+statement ok
+COPY (
+	SELECT range AS id, 'value_' || range::VARCHAR AS val
+	FROM range(10)
+) TO '__TEST_DIR__/footer_only.parquet' (FORMAT parquet, write_bloom_filter false);
+
+query I
+SELECT prewarm_parquet_metadata('__TEST_DIR__/footer_only.parquet') =
+       (SELECT footer_size + 8 FROM parquet_file_metadata('__TEST_DIR__/footer_only.parquet'));
+----
+true
+
+statement ok
+COPY (
+	SELECT (r1.range * 10)::BIGINT AS r
+	FROM range(100) r1, range(100)
+	ORDER BY r
+) TO '__TEST_DIR__/metadata_bloom.parquet'
+  (FORMAT parquet, ROW_GROUP_SIZE 10000, dictionary_size_limit 1000);
+
+query I
+SELECT prewarm_parquet_metadata('__TEST_DIR__/metadata_bloom.parquet') =
+       (SELECT footer_size + 8 FROM parquet_file_metadata('__TEST_DIR__/metadata_bloom.parquet')) +
+       (SELECT COALESCE(SUM(bloom_filter_length), 0) FROM parquet_metadata('__TEST_DIR__/metadata_bloom.parquet'));
+----
+true
+
+query I
+SELECT prewarm_parquet_metadata('__TEST_DIR__/*.parquet') =
+       prewarm_parquet_metadata('__TEST_DIR__/footer_only.parquet') +
+       prewarm_parquet_metadata('__TEST_DIR__/metadata_bloom.parquet');
+----
+true
+
+query I
+SELECT prewarm_parquet_metadata('__TEST_DIR__/missing_*.parquet');
+----
+0
+
+statement ok
+COPY (
+	SELECT repeat('x', 20) AS val
+) TO '__TEST_DIR__/not_parquet.csv' (HEADER false);
+
+statement error
+SELECT prewarm_parquet_metadata('__TEST_DIR__/not_parquet.csv');
+----
+Invalid Input Error: No magic bytes found at end of file '__TEST_DIR__/not_parquet.csv'

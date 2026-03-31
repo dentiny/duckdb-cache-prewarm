@@ -17,6 +17,12 @@ endif()
 
 project(${TARGET_NAME})
 include_directories(src/include)
+include_directories(duckdb/extension/parquet/include)
+include_directories(duckdb/third_party/brotli/include)
+include_directories(duckdb/third_party/lz4)
+include_directories(duckdb/third_party/parquet)
+include_directories(duckdb/third_party/snappy)
+include_directories(duckdb/third_party/thrift)
 include_directories(duck-read-cache-fs/src/include)
 include_directories(duck-read-cache-fs/src/utils/include)
 include_directories(duck-read-cache-fs/duckdb-httpfs/src/include)
@@ -27,12 +33,14 @@ set(EXTENSION_SOURCES
     src/core/block_collector.cpp
     src/core/buffer_prewarm_strategy.cpp
     src/core/os_prefetch.cpp
+    src/core/parquet_metadata_prewarmer.cpp
     src/core/prefetch_prewarm_strategy.cpp
     src/core/prewarm_strategy.cpp
     src/core/prewarm_strategy_factory.cpp
     src/core/read_prewarm_strategy.cpp
     src/core/remote_block_collector.cpp
     src/core/remote_prewarm_strategy.cpp
+    src/functions/prewarm_parquet_metadata_function.cpp
     src/functions/prewarm_function.cpp
     src/functions/prewarm_remote_function.cpp
     src/utils/parse_size.cpp
@@ -88,10 +96,22 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
-target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto
-                      CURL::libcurl)
-target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto
-                      CURL::libcurl)
+target_link_libraries(
+  ${EXTENSION_NAME}
+  OpenSSL::SSL
+  OpenSSL::Crypto
+  CURL::libcurl
+  parquet_extension
+  duckdb_mbedtls
+  duckdb_zstd)
+target_link_libraries(
+  ${LOADABLE_EXTENSION_NAME}
+  OpenSSL::SSL
+  OpenSSL::Crypto
+  CURL::libcurl
+  parquet_extension
+  duckdb_mbedtls
+  duckdb_zstd)
 
 if(MINGW OR WIN32)
   target_link_libraries(${EXTENSION_NAME} crypt32)
@@ -114,4 +134,12 @@ if("${BUILD_BENCHMARK}" STREQUAL "1")
   set_target_properties(clickbench PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                               "${CMAKE_BINARY_DIR}/bench")
   install(TARGETS clickbench RUNTIME DESTINATION "${INSTALL_BIN_DIR}")
+
+  add_executable(parquet_metadata_bench bench/parquet_metadata.cpp)
+  target_link_libraries(parquet_metadata_bench duckdb ${EXTENSION_NAME})
+  set_target_properties(
+    parquet_metadata_bench PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                      "${CMAKE_BINARY_DIR}/bench")
+  install(TARGETS parquet_metadata_bench
+          RUNTIME DESTINATION "${INSTALL_BIN_DIR}")
 endif()
