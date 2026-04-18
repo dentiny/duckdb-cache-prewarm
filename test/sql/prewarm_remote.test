@@ -22,12 +22,12 @@ SELECT * FROM cache_httpfs_cache_status_query();
 #===--------------------------------------------------------------------===#
 # Test 1: Prewarm a real remote file with large block size
 # The stock-exchanges.csv is 16222 bytes.
-# With block_size=1000000, block count = ceil(16222 / 1000000) = 1.
-# Returns bytes: 1 * 1000000 = 1000000
+# With block_size=1048576 (1 MiB), block count = ceil(16222 / 1048576) = 1.
+# Returns bytes read: 16222 (actual file size)
 #===--------------------------------------------------------------------===#
 
 statement ok
-SET cache_httpfs_cache_block_size=1000000;
+SET cache_httpfs_cache_block_size=1048576;
 
 query I
 SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv');
@@ -45,12 +45,12 @@ SELECT cache_httpfs_clear_cache();
 
 #===--------------------------------------------------------------------===#
 # Test 2: Prewarm with smaller block size to produce multiple blocks
-# With block_size=1000, block count = ceil(16222 / 1000) = 17.
-# Returns bytes: 17 * 1000 = 17000
+# With block_size=1024, block count = ceil(16222 / 1024) = 16.
+# Returns bytes read: 16222 (full file)
 #===--------------------------------------------------------------------===#
 
 statement ok
-SET cache_httpfs_cache_block_size=1000;
+SET cache_httpfs_cache_block_size=1024;
 
 query I
 SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv?cache_test=prewarm_2');
@@ -60,58 +60,56 @@ SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache
 query I
 SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
 ----
-17
+16
 
 statement ok
 SELECT cache_httpfs_clear_cache();
 
 #===--------------------------------------------------------------------===#
 # Test 3: Prewarm with max_size limit (bytes)
-# With block_size=1000, file has 17 blocks.
-# 3000 bytes / 1000 block_size = 3 blocks max.
-# Returns bytes: 3 * 1000 = 3000
+# With block_size=1024, max_blocks = floor(3000 / 1024) = 2.
+# Returns bytes: 1024 + 1024 = 2048
 #===--------------------------------------------------------------------===#
 
 query I
 SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv?cache_test=prewarm_3', 3000);
 ----
-3000
+2048
 
 query I
 SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
 ----
-3
+2
 
 statement ok
 SELECT cache_httpfs_clear_cache();
 
 #===--------------------------------------------------------------------===#
 # Test 3b: Prewarm with max_size limit (human-readable string '3KB')
-# With block_size=1000, 3000 bytes / 1000 = 3 blocks max.
-# Note: '3KB' = 3000 bytes (KB uses 1000-based units in DuckDB)
+# '3KB' = 3000 bytes; max_blocks = floor(3000 / 1024) = 2 (same as Test 3).
 #===--------------------------------------------------------------------===#
 
 query I
 SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv?cache_test=prewarm_3b', '3KB');
 ----
-3000
+2048
 
 query I
 SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
 ----
-3
+2
 
 statement ok
 SELECT cache_httpfs_clear_cache();
 
 #===--------------------------------------------------------------------===#
 # Test 4: Prewarm with another block size for further deterministic validation
-# With block_size=4000, block count = ceil(16222 / 4000) = 5.
-# Returns bytes: 5 * 4000 = 20000
+# With block_size=4096, block count = ceil(16222 / 4096) = 4.
+# Returns bytes read: 16222
 #===--------------------------------------------------------------------===#
 
 statement ok
-SET cache_httpfs_cache_block_size=4000;
+SET cache_httpfs_cache_block_size=4096;
 
 query I
 SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache-fs/refs/heads/main/test/data/stock-exchanges.csv?cache_test=prewarm_4');
@@ -121,7 +119,7 @@ SELECT prewarm_remote('https://raw.githubusercontent.com/dentiny/duck-read-cache
 query I
 SELECT COUNT(*) FROM glob('/tmp/duckdb_cache_httpfs_cache/*');
 ----
-5
+4
 
 statement ok
 SELECT cache_httpfs_clear_cache();
@@ -131,7 +129,7 @@ SELECT cache_httpfs_clear_cache();
 #===--------------------------------------------------------------------===#
 
 statement ok
-SET cache_httpfs_cache_block_size=1000000;
+SET cache_httpfs_cache_block_size=1048576;
 
 statement ok
 SELECT cache_httpfs_wrap_cache_filesystem('cache_httpfs_fake_filesystem');
@@ -187,27 +185,27 @@ SELECT cache_httpfs_clear_cache();
 
 #===--------------------------------------------------------------------===#
 # Test 7: max_size limits prewarming on fake filesystem
-# 1000000 bytes / 1000000 block_size = 1 block max
-# Returns bytes: 1 * 1000000 = 1000000
+# block_size=1048576; max_blocks = floor(1048576 / 1048576) = 1
+# Returns bytes: first block read (full block for large file)
 #===--------------------------------------------------------------------===#
 
 query I
-SELECT prewarm_remote('/tmp/cache_httpfs_fake_filesystem/test_prewarm.csv', 1000000);
+SELECT prewarm_remote('/tmp/cache_httpfs_fake_filesystem/test_prewarm.csv', 1048576);
 ----
-1000000
+1048576
 
 statement ok
 SELECT cache_httpfs_clear_cache();
 
 #===--------------------------------------------------------------------===#
-# Test 7b: max_size with human-readable string '1MB'
-# 1000000 bytes / 1000000 block_size = 1 block max
+# Test 7b: max_size with human-readable string '1MiB' (1024*1024 bytes)
+# Same as Test 7: one full block with block_size=1048576
 #===--------------------------------------------------------------------===#
 
 query I
-SELECT prewarm_remote('/tmp/cache_httpfs_fake_filesystem/test_prewarm.csv', '1MB');
+SELECT prewarm_remote('/tmp/cache_httpfs_fake_filesystem/test_prewarm.csv', '1MiB');
 ----
-1000000
+1048576
 
 statement ok
 SELECT cache_httpfs_clear_cache();
