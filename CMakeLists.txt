@@ -43,6 +43,7 @@ set(EXTENSION_SOURCES
     duck-read-cache-fs/duckdb-httpfs/src/http_state.cpp
     duck-read-cache-fs/duckdb-httpfs/src/httpfs.cpp
     duck-read-cache-fs/duckdb-httpfs/src/httpfs_curl_client.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/httpfs_connection_caching.cpp
     duck-read-cache-fs/duckdb-httpfs/src/httpfs_extension.cpp
     duck-read-cache-fs/duckdb-httpfs/src/httpfs_httplib_client.cpp
     duck-read-cache-fs/duckdb-httpfs/src/s3_multi_part_upload.cpp
@@ -64,6 +65,7 @@ set(EXTENSION_SOURCES
     duck-read-cache-fs/src/filesystem_status_query_function.cpp
     duck-read-cache-fs/src/histogram.cpp
     duck-read-cache-fs/src/in_mem_cache_block.cpp
+    duck-read-cache-fs/src/in_mem_cache_remap.cpp
     duck-read-cache-fs/src/in_memory_cache_reader.cpp
     duck-read-cache-fs/src/io_operations.cpp
     duck-read-cache-fs/src/noop_cache_reader.cpp
