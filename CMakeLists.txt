@@ -61,12 +61,15 @@ set(EXTENSION_SOURCES
     duck-read-cache-fs/src/cache_status_query_function.cpp
     duck-read-cache-fs/src/disk_cache_reader.cpp
     duck-read-cache-fs/src/disk_cache_util.cpp
+    duck-read-cache-fs/src/extension_bounded_data_cache_storage.cpp
     duck-read-cache-fs/src/extension_config_query_function.cpp
     duck-read-cache-fs/src/filesystem_status_query_function.cpp
     duck-read-cache-fs/src/histogram.cpp
     duck-read-cache-fs/src/in_mem_cache_block.cpp
     duck-read-cache-fs/src/in_mem_cache_remap.cpp
     duck-read-cache-fs/src/in_memory_cache_reader.cpp
+    duck-read-cache-fs/src/in_memory_data_cache_storage.cpp
+    duck-read-cache-fs/src/object_cache_data_cache_storage.cpp
     duck-read-cache-fs/src/io_operations.cpp
     duck-read-cache-fs/src/noop_cache_reader.cpp
     duck-read-cache-fs/src/noop_profile_collector.cpp
