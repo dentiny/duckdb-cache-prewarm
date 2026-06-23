@@ -82,6 +82,8 @@ set(EXTENSION_SOURCES
     duck-read-cache-fs/src/utils/page_aligned_data_chunk.cpp
     duck-read-cache-fs/src/utils/scoped_directory.cpp
     duck-read-cache-fs/src/utils/thread_pool.cpp
+    duck-read-cache-fs/src/utils/thread_pool_parallel_executor.cpp
+    duck-read-cache-fs/src/utils/duckdb_task_parallel_executor.cpp
     duck-read-cache-fs/src/utils/thread_utils.cpp
     duck-read-cache-fs/src/utils/time_utils.cpp
     duck-read-cache-fs/src/utils/url_utils.cpp)
