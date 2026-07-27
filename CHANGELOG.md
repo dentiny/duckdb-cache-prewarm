@@ -1,3 +1,10 @@
+# 0.2.5
+
+For more details, please refer to the [release note](https://github.com/dentiny/duckdb-cache-prewarm/releases/tag/v0.2.5).
+
+Improved:
+- Upgrade duck-read-cache-fs, DuckDB, and extension-ci-tools to 1.5.5 ([#68](https://github.com/dentiny/duckdb-cache-prewarm/pull/68))
+
 # 0.2.2
 
 For more details, please refer to the [release note](https://github.com/dentiny/duckdb-cache-prewarm/releases/tag/v0.2.2).
