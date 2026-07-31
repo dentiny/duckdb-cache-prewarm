@@ -10,3 +10,6 @@ test/python/__pycache__/
 
 # Ignore readme for agents.
 AGENTs.md
+ccache_dir/
+.cache/
+.claude/
