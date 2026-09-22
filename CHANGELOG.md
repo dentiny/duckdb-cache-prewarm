@@ -2,8 +2,13 @@
 
 ## Added
 
-- Added descriptions, examples, categories, and parameter names for all
-  `prewarm` and `prewarm_remote` overloads in `duckdb_functions()`.
+- Added descriptions, examples, categories, and parameter names for all `prewarm` and `prewarm_remote` overloads in `duckdb_functions()`.
+
+## Fixed
+
+- Avoid nullptr access ([#71])
+
+[#71]: https://github.com/dentiny/duckdb-cache-prewarm/pull/71
 
 # 0.2.5
 
