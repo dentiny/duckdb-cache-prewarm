@@ -70,8 +70,8 @@ void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &resu
 // Function Registration
 //===--------------------------------------------------------------------===//
 
-void RegisterPrewarmRemoteFunction(ExtensionLoader &loader) {
-	// Register prewarm_remote scalar function with multiple signatures
+ScalarFunctionSet GetPrewarmRemoteFunction() {
+	// Create prewarm_remote scalar function overloads.
 	ScalarFunctionSet prewarm_remote_set("prewarm_remote");
 
 	// prewarm_remote(pattern)
@@ -89,7 +89,7 @@ void RegisterPrewarmRemoteFunction(ExtensionLoader &loader) {
 	    ScalarFunction(/*arguments=*/ {LogicalType {LogicalTypeId::VARCHAR}, LogicalType {LogicalTypeId::VARCHAR}},
 	                   /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmRemoteFunction));
 
-	loader.RegisterFunction(prewarm_remote_set);
+	return prewarm_remote_set;
 }
 
 } // namespace duckdb

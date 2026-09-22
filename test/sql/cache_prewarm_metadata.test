@@ -1,0 +1,16 @@
+# name: test/sql/cache_prewarm_metadata.test
+# description: test catalog metadata for cache_prewarm scalar functions
+# group: [sql]
+
+require cache_prewarm
+
+query I
+SELECT count(*)
+FROM duckdb_functions()
+WHERE function_name IN ('prewarm', 'prewarm_remote')
+  AND description IS NOT NULL
+  AND len(examples) > 0
+  AND len(categories) > 0
+  AND len(parameters) = len(parameter_types);
+----
+7

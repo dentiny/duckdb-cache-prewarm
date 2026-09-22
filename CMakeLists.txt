@@ -24,6 +24,7 @@ include_directories(duck-read-cache-fs/duckdb/third_party/httplib)
 
 set(EXTENSION_SOURCES
     src/cache_prewarm_extension.cpp
+    src/cache_prewarm_functions.cpp
     src/core/block_collector.cpp
     src/core/buffer_prewarm_strategy.cpp
     src/core/os_prefetch.cpp

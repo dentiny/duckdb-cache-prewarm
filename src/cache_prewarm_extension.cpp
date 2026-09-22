@@ -2,8 +2,7 @@
 
 #include "cache_httpfs_extension.hpp"
 #include "cache_prewarm_extension.hpp"
-#include "functions/prewarm_function.hpp"
-#include "functions/prewarm_remote_function.hpp"
+#include "cache_prewarm_functions.hpp"
 #include "duckdb.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
 
@@ -15,8 +14,7 @@ constexpr const char *CACHE_HTTPFS_EXTENSION = "cache_httpfs";
 
 void LoadInternal(ExtensionLoader &loader) {
 	LoadCacheHttpfsExtensionIfNeeded(loader);
-	RegisterPrewarmFunction(loader);
-	RegisterPrewarmRemoteFunction(loader);
+	RegisterCachePrewarmFunctions(loader);
 }
 
 } // namespace

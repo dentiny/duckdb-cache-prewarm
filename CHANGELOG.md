@@ -1,3 +1,10 @@
+# 0.2.6
+
+## Added
+
+- Added descriptions, examples, categories, and parameter names for all
+  `prewarm` and `prewarm_remote` overloads in `duckdb_functions()`.
+
 # 0.2.5
 
 For more details, please refer to the [release note](https://github.com/dentiny/duckdb-cache-prewarm/releases/tag/v0.2.5).
