@@ -6,9 +6,9 @@
 #include "utils/include/parse_size.hpp"
 
 #include "duckdb/common/exception.hpp"
+#include "duckdb/common/file_system.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/function/scalar_function.hpp"
-#include "duckdb/main/database.hpp"
 
 namespace duckdb {
 
@@ -44,10 +44,7 @@ void PrewarmRemoteFunction(DataChunk &args, ExpressionState &state, Vector &resu
 		}
 	}
 
-	// Get filesystem from database
-	auto &db = DatabaseInstance::GetDatabase(context);
-	// OpenerFileSystem(fs) -> VirtualFileSystem -> CacheFileSystem
-	auto &fs = db.GetFileSystem();
+	auto &fs = FileSystem::GetFileSystem(context);
 
 	// Collect remote blocks
 	auto blocks = RemoteBlockCollector::CollectRemoteBlocks(fs, pattern, block_size);
