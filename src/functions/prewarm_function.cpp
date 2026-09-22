@@ -127,8 +127,8 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 // Function Registration
 //===--------------------------------------------------------------------===//
 
-void RegisterPrewarmFunction(ExtensionLoader &loader) {
-	// Register prewarm scalar function
+ScalarFunctionSet GetPrewarmFunction() {
+	// Create prewarm scalar function overloads.
 	// Signature: prewarm(table_name, [mode], [max_bytes])
 	// table_name supports qualified names: "table", "schema.table", or "database.schema.table"
 	ScalarFunctionSet prewarm_set("prewarm");
@@ -149,7 +149,7 @@ void RegisterPrewarmFunction(ExtensionLoader &loader) {
 	                                                       /*mode=*/LogicalType {LogicalTypeId::VARCHAR},
 	                                                       /*max_size=*/LogicalType {LogicalTypeId::VARCHAR}},
 	                                       /*return_type=*/LogicalType {LogicalTypeId::BIGINT}, PrewarmFunction));
-	loader.RegisterFunction(prewarm_set);
+	return prewarm_set;
 }
 
 } // namespace duckdb
