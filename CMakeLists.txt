@@ -55,6 +55,7 @@ set(EXTENSION_SOURCES
     duck-read-cache-fs/src/cache_exclusion_utils.cpp
     duck-read-cache-fs/src/cache_filesystem.cpp
     duck-read-cache-fs/src/cache_filesystem_config.cpp
+    duck-read-cache-fs/src/cache_httpfs_config.cpp
     duck-read-cache-fs/src/cache_httpfs_extension.cpp
     duck-read-cache-fs/src/cache_httpfs_extension_callback.cpp
     duck-read-cache-fs/src/cache_httpfs_instance_state.cpp
