@@ -1,5 +1,9 @@
 # 0.2.6
 
+## Changed
+
+- Update DuckDB and extension-ci-tools to `v1.5.6` and synchronize the embedded cache_httpfs dependency.
+
 ## Added
 
 - Added descriptions, examples, categories, and parameter names for all `prewarm` and `prewarm_remote` overloads in `duckdb_functions()`.
