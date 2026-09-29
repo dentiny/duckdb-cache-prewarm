@@ -1,5 +1,11 @@
 # 0.2.6
 
+## Changed
+
+- Update DuckDB and extension-ci-tools to `v1.5.6`.
+- Update embedded cache_httpfs, including duckdb-httpfs aligned with DuckDB `v1.5.6`.
+- Include the new `cache_httpfs_config.cpp` source in the embedded cache_httpfs build.
+
 ## Added
 
 - Added descriptions, examples, categories, and parameter names for all `prewarm` and `prewarm_remote` overloads in `duckdb_functions()`.
