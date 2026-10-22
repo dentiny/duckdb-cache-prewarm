@@ -6,16 +6,18 @@
 #include "duckdb/main/extension/extension_loader.hpp"
 #include "duckdb/parser/parsed_data/create_scalar_function_info.hpp"
 
+#include <string_view>
+
 namespace duckdb {
 
 namespace {
 
 FunctionDescription MakeDescription(vector<LogicalType> parameter_types, vector<string> parameter_names,
-                                    string description, vector<string> examples, vector<string> categories) {
+                                    std::string_view description, vector<string> examples, vector<string> categories) {
 	FunctionDescription result;
 	result.parameter_types = std::move(parameter_types);
 	result.parameter_names = std::move(parameter_names);
-	result.description = std::move(description);
+	result.description = description;
 	result.examples = std::move(examples);
 	result.categories = std::move(categories);
 	return result;
@@ -32,10 +34,10 @@ void RegisterScalarFunction(ExtensionLoader &loader, ScalarFunctionSet function,
 } // namespace
 
 void RegisterCachePrewarmFunctions(ExtensionLoader &loader) {
-	const string prewarm_description =
+	constexpr std::string_view prewarm_description =
 	    "Preloads a local DuckDB table into the buffer pool or operating system page cache and returns the number of "
 	    "bytes prewarmed.";
-	const string remote_description =
+	constexpr std::string_view remote_description =
 	    "Preloads files matching a path or URL pattern into the cache_httpfs cache and returns the number of bytes "
 	    "prewarmed.";
 	const vector<string> categories = {"storage", "cache"};

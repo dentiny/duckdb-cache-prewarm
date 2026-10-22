@@ -15,10 +15,10 @@ constexpr idx_t BUFFER_PREFETCH_TARGET_BYTES = 4ULL * 1024ULL * 1024ULL;
 
 class BufferPrefetchTask : public BaseExecutorTask {
 public:
-	BufferPrefetchTask(TaskExecutor &executor, BufferManager &buffer_manager_p,
+	BufferPrefetchTask(TaskExecutor &executor, ClientContext &context_p, BufferManager &buffer_manager_p,
 	                   vector<shared_ptr<BlockHandle>> &handles_p, idx_t start_p, idx_t count_p)
-	    : BaseExecutorTask(executor), buffer_manager(buffer_manager_p), handles(handles_p), start(start_p),
-	      count(count_p) {
+	    : BaseExecutorTask(executor), context(context_p), buffer_manager(buffer_manager_p), handles(handles_p),
+	      start(start_p), count(count_p) {
 	}
 
 	void ExecuteTask() override {
@@ -27,7 +27,7 @@ public:
 		for (idx_t idx = 0; idx < count; idx++) {
 			batch.push_back(handles[start + idx]);
 		}
-		buffer_manager.Prefetch(batch);
+		buffer_manager.Prefetch(context, batch);
 	}
 
 	string TaskType() const override {
@@ -35,6 +35,7 @@ public:
 	}
 
 private:
+	ClientContext &context;
 	BufferManager &buffer_manager;
 	vector<shared_ptr<BlockHandle>> &handles;
 	idx_t start;
@@ -43,7 +44,7 @@ private:
 
 } // namespace
 
-idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
+idx_t BufferPrewarmStrategy::Execute(DuckTableEntry & /*table_entry*/, const unordered_set<block_id_t> &block_ids,
                                      idx_t max_blocks) {
 	auto unloaded_handles = GetUnloadedBlockHandles(block_ids);
 	if (unloaded_handles.empty()) {
@@ -70,7 +71,7 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 		                   capacity_info.available_space, blocks_to_prewarm * capacity_info.block_size);
 	}
 
-	auto thread_count = std::max(1, TaskScheduler::GetScheduler(context).NumberOfThreads());
+	auto thread_count = std::max<idx_t>(1, TaskScheduler::GetScheduler(context).NumberOfThreads());
 	auto blocks_per_task =
 	    CalculateBlocksPerTask(capacity_info.block_size, effective_max, thread_count, BUFFER_PREFETCH_TARGET_BYTES);
 	if (blocks_per_task == 0) {
@@ -84,7 +85,7 @@ idx_t BufferPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordere
 	TaskExecutor executor(context);
 	for (idx_t start = 0; start < unloaded_handles.size(); start += blocks_per_task) {
 		auto count = std::min<idx_t>(blocks_per_task, unloaded_handles.size() - start);
-		auto task = make_uniq<BufferPrefetchTask>(executor, buffer_manager, unloaded_handles, start, count);
+		auto task = make_uniq<BufferPrefetchTask>(executor, context, buffer_manager, unloaded_handles, start, count);
 		executor.ScheduleTask(std::move(task));
 	}
 	executor.WorkOnTasks();

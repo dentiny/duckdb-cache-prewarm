@@ -34,7 +34,6 @@ public:
 	BufferCapacityInfo CalculateMaxAvailableBlocks() override;
 
 protected:
-	ClientContext &context;
 	FileSystem &fs;
 };
 
