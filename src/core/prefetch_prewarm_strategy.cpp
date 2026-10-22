@@ -11,6 +11,8 @@ namespace duckdb {
 
 namespace {
 
+constexpr std::string_view PREFETCH_STRATEGY_NAME = "PREFETCH";
+
 // Target ~512KiB per hint batch to align with page cache granularity.
 constexpr idx_t PREFETCH_CHUNK_SIZE = Storage::SECTOR_SIZE * 128;
 
@@ -42,7 +44,7 @@ private:
 
 idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
                                        idx_t max_blocks) {
-	CheckDirectIO(table_entry, "PREFETCH");
+	CheckDirectIO(table_entry, PREFETCH_STRATEGY_NAME);
 
 	auto block_size = block_manager.GetBlockAllocSize();
 

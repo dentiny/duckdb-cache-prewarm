@@ -14,6 +14,8 @@ namespace duckdb {
 
 namespace {
 
+constexpr std::string_view READ_STRATEGY_NAME = "READ";
+
 // Target ~512KiB per read batch to align with page cache granularity while limiting temp buffer usage.
 constexpr idx_t READ_PREFETCH_TARGET_BYTES = Storage::SECTOR_SIZE * 128;
 
@@ -59,7 +61,7 @@ private:
 
 idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
                                    idx_t max_blocks) {
-	CheckDirectIO(table_entry, "READ");
+	CheckDirectIO(table_entry, READ_STRATEGY_NAME);
 
 	auto unloaded_handles = GetUnloadedBlockHandles(block_ids);
 	if (unloaded_handles.empty()) {
