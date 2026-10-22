@@ -25,8 +25,13 @@ vector<RemoteBlockInfo> RemotePrewarmStrategy::FilterCachedBlocks(const string &
 
 BufferCapacityInfo RemotePrewarmStrategy::CalculateMaxAvailableBlocks() {
 	// TODO: expose capacity, used space, available space info from cache_httpfs's cache reader
-	const auto max_size = NumericLimits<idx_t>::Maximum();
-	return BufferCapacityInfo {1024ULL * 1024ULL, max_size, 0, max_size, max_size};
+	return BufferCapacityInfo {
+	    .block_size = 1024ULL * 1024ULL,
+	    .max_capacity = UINT64_MAX,
+	    .used_space = 0,
+	    .available_space = UINT64_MAX,
+	    .max_blocks = UINT64_MAX,
+	};
 }
 
 idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_t max_blocks) {
