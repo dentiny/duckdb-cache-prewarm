@@ -3,7 +3,7 @@
 ## Changed
 
 - Upgrade DuckDB to `v2.0.0`, extension-ci-tools to the latest commit, and embedded cache_httpfs to `0.15.0` with its matching httpfs sources.
-- Require C++17 and reuse standard data/type-trait helpers and callable deduction in Span and scope cleanup.
+- Require C++17 and reuse standard data/type-trait helpers in Span.
 - Resolve SQL identifiers through DuckDB's catalog API and pass query context to prefetch and read operations.
 - Reuse cache_httpfs's parallel executor and DuckDB's buffer allocator for remote prewarming.
 - Annotate mock filesystem shared state with DuckDB's thread-safety utilities and support prebuilt static DuckDB unit-test linkage.
