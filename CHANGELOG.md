@@ -2,6 +2,7 @@
 
 ## Fixed
 
+- Declare all prewarm overloads fallible so invalid table, mode, size and filesystem errors remain normal execution errors on DuckDB v2.
 - Validate prewarm byte counts against the database block size instead of fixed cache-residency and compressed-size expectations in SQL tests.
 - Include storage, catalog, and logging definitions explicitly for DuckDB v2 builds.
 - Preserve unlimited size limits using DuckDB's `ParseMemoryLimitOrMaximum` API.

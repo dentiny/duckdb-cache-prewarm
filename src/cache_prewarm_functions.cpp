@@ -25,6 +25,7 @@ FunctionDescription MakeDescription(vector<LogicalType> parameter_types, vector<
 
 void RegisterScalarFunction(ExtensionLoader &loader, ScalarFunctionSet function,
                             vector<FunctionDescription> descriptions) {
+	function.SetFallible();
 	CreateScalarFunctionInfo info(std::move(function));
 	info.on_conflict = OnCreateConflict::ALTER_ON_CONFLICT;
 	info.descriptions = std::move(descriptions);
