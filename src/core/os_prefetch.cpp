@@ -20,9 +20,7 @@ idx_t OSPrefetchBlocks(const string &db_path, Span<const block_id_t> block_ids, 
 	if (fd < 0) {
 		return 0;
 	}
-	SCOPE_EXIT {
-		close(fd);
-	};
+	const ScopeGuard close_fd([fd] { close(fd); });
 
 	// Get file size to avoid prefetching beyond EOF
 	struct stat st;

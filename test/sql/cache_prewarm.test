@@ -139,4 +139,30 @@ true
 statement error
 SELECT prewarm('nonexistent_db.main.events', 'buffer');
 ----
-Database 'nonexistent_db' not found
+nonexistent_db
+
+# Identifier lookup preserves quoted dots and resolves the current schema.
+statement ok
+CREATE SCHEMA "Warm Schema";
+
+statement ok
+CREATE TABLE "Warm Schema"."Mixed.Table" AS SELECT 42 AS value;
+
+statement ok
+CHECKPOINT;
+
+query I
+SELECT prewarm('"Warm Schema"."Mixed.Table"', 'buffer', '0B');
+----
+0
+
+statement ok
+SET schema = 'Warm Schema';
+
+query I
+SELECT prewarm('"mixed.table"', 'buffer', '0B');
+----
+0
+
+statement ok
+SET schema = 'main';

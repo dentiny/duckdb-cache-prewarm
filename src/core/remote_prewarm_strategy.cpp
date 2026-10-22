@@ -7,16 +7,17 @@
 #include "duckdb/logging/logger.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
-#include "thread_pool.hpp"
-#include <future>
+#include "thread_pool_parallel_executor.hpp"
+#include "duckdb/common/allocator.hpp"
+#include "duckdb/common/query_context.hpp"
 
 namespace duckdb {
 
 RemotePrewarmStrategy::RemotePrewarmStrategy(ClientContext &context_p, FileSystem &fs_p)
-    : PrewarmStrategy(context_p), context(context_p), fs(fs_p) {
+    : PrewarmStrategy(context_p), fs(fs_p) {
 }
 
-vector<RemoteBlockInfo> RemotePrewarmStrategy::FilterCachedBlocks(const string &file_path,
+vector<RemoteBlockInfo> RemotePrewarmStrategy::FilterCachedBlocks(const string & /*file_path*/,
                                                                   const vector<RemoteBlockInfo> &blocks) {
 	// TODO: implement a API to do this filtering at cache_httpfs side
 	return blocks;
@@ -24,13 +25,8 @@ vector<RemoteBlockInfo> RemotePrewarmStrategy::FilterCachedBlocks(const string &
 
 BufferCapacityInfo RemotePrewarmStrategy::CalculateMaxAvailableBlocks() {
 	// TODO: expose capacity, used space, available space info from cache_httpfs's cache reader
-	return BufferCapacityInfo {
-	    .block_size = 1024ULL * 1024ULL,
-	    .max_capacity = UINT64_MAX,
-	    .used_space = 0,
-	    .available_space = UINT64_MAX,
-	    .max_blocks = UINT64_MAX,
-	};
+	const auto max_size = NumericLimits<idx_t>::Maximum();
+	return BufferCapacityInfo {1024ULL * 1024ULL, max_size, 0, max_size, max_size};
 }
 
 idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_t max_blocks) {
@@ -83,9 +79,9 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 
 	const CacheHttpfsInstanceState &instance_state = GetInstanceStateOrThrow(context);
 	const auto task_count = GetThreadCountForSubrequests(blocks_to_prewarm, instance_state.config.max_subrequest_count);
-	ThreadPool thread_pool(task_count);
-	vector<std::future<void>> prewarm_futures;
-	prewarm_futures.reserve(blocks_to_prewarm);
+	ThreadPoolParallelExecutor executor(task_count);
+	auto &allocator = BufferAllocator::Get(context);
+	const QueryContext query_context(context);
 	idx_t prewarmed_blocks = 0;
 	idx_t bytes_prewarmed = 0;
 	for (const auto &blocks : uncached_file_blocks) {
@@ -97,21 +93,18 @@ idx_t RemotePrewarmStrategy::Execute(const RemoteFileBlockMap &file_blocks, idx_
 			if (prewarmed_blocks >= blocks_to_prewarm) {
 				break;
 			}
-			auto future = thread_pool.Push([block, file_handle]() {
+			executor.Schedule([block, file_handle, query_context, &allocator]() {
 				// TODO: add a easy buffer pool to reuse the buffer
-				auto buffer = unique_ptr<char[]>(new char[block.size]);
+				auto buffer = allocator.Allocate(NumericCast<idx_t>(block.size));
 				// we only care about on-disk cache file, but not return value
-				file_handle->Read(buffer.get(), block.size, block.offset);
+				file_handle->Read(query_context, buffer.get(), NumericCast<idx_t>(block.size), block.offset);
 			});
-			prewarm_futures.emplace_back(std::move(future));
 			bytes_prewarmed += static_cast<idx_t>(block.size);
 			prewarmed_blocks++;
 		}
 	}
 
-	for (auto &future : prewarm_futures) {
-		future.get();
-	}
+	executor.WaitAll();
 
 	return bytes_prewarmed;
 }

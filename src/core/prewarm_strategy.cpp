@@ -1,6 +1,8 @@
 #include "core/prewarm_strategy.hpp"
 
 #include "duckdb/common/exception.hpp"
+#include "duckdb/common/string_util.hpp"
+#include "duckdb/main/attached_database.hpp"
 #include "duckdb/storage/buffer/block_handle.hpp"
 
 namespace duckdb {
@@ -24,8 +26,10 @@ idx_t PrewarmStrategy::CalculateBlocksPerTask(idx_t block_size, idx_t max_blocks
 	return std::min<idx_t>(target_blocks, max_blocks_per_task);
 }
 
-void LocalPrewarmStrategy::CheckDirectIO(const string &strategy_name) {
-	if (context.db->config.options.use_direct_io) {
+void LocalPrewarmStrategy::CheckDirectIO(DuckTableEntry &table_entry, const string &strategy_name) {
+	const auto &options = table_entry.ParentCatalog().GetAttached().GetAttachOptions();
+	const auto io_mode = options.find("io_mode");
+	if (io_mode != options.end() && StringUtil::CIEquals(io_mode->second.ToString(), "DIRECT_IO")) {
 		throw InvalidInputException("%s prewarming strategy is not effective when direct I/O is enabled. "
 		                            "Direct I/O bypasses the OS page cache. "
 		                            "Use the BUFFER strategy instead to warm DuckDB's internal buffer pool.",

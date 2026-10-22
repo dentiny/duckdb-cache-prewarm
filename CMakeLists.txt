@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 # Set extension name here
 set(TARGET_NAME cache_prewarm)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
@@ -20,7 +21,7 @@ include_directories(src/include)
 include_directories(duck-read-cache-fs/src/include)
 include_directories(duck-read-cache-fs/src/utils/include)
 include_directories(duck-read-cache-fs/duckdb-httpfs/src/include)
-include_directories(duck-read-cache-fs/duckdb/third_party/httplib)
+include_directories(duckdb/third_party/httplib)
 
 set(EXTENSION_SOURCES
     src/cache_prewarm_extension.cpp
@@ -39,16 +40,28 @@ set(EXTENSION_SOURCES
     src/utils/parse_size.cpp
     duck-read-cache-fs/duckdb-httpfs/src/create_secret_functions.cpp
     duck-read-cache-fs/duckdb-httpfs/src/crypto.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/hash_functions.cpp
     duck-read-cache-fs/duckdb-httpfs/src/hffs.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/http_state.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/httpfs.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/httpfs_curl_client.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/httpfs_connection_caching.cpp
     duck-read-cache-fs/duckdb-httpfs/src/httpfs_extension.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/httpfs_httplib_client.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/s3_multi_part_upload.cpp
-    duck-read-cache-fs/duckdb-httpfs/src/s3fs.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http/http_request.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http/http_request_session.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http/http_settings.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http/http_state.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http/httpfs.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http/httpfs_certificates.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http/httpfs_curl_client.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http/httpfs_httplib_client.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/http/httpfs_transport.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_auth.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_delete.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_endpoint.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_list.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_provider.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_request.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_settings.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_upload_session.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_url.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3_xml_response.cpp
+    duck-read-cache-fs/duckdb-httpfs/src/s3/s3fs.cpp
     duck-read-cache-fs/src/base_profile_collector.cpp
     duck-read-cache-fs/src/cache_entry_info.cpp
     duck-read-cache-fs/src/cache_exclusion_manager.cpp
@@ -101,6 +114,20 @@ target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto
                       CURL::libcurl)
 target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto
                       CURL::libcurl)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  target_compile_options(${EXTENSION_NAME} PRIVATE -Wthread-safety)
+  target_compile_options(${LOADABLE_EXTENSION_NAME} PRIVATE -Wthread-safety)
+endif()
+
+if(APPLE)
+  find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
+  find_library(SECURITY_FRAMEWORK Security)
+  target_link_libraries(${EXTENSION_NAME} ${COREFOUNDATION_FRAMEWORK}
+                        ${SECURITY_FRAMEWORK})
+  target_link_libraries(${LOADABLE_EXTENSION_NAME} ${COREFOUNDATION_FRAMEWORK}
+                        ${SECURITY_FRAMEWORK})
+endif()
 
 if(MINGW OR WIN32)
   target_link_libraries(${EXTENSION_NAME} crypt32)

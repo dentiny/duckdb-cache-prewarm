@@ -6,11 +6,13 @@
 #include "duckdb.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
 
+#include <string_view>
+
 namespace duckdb {
 
 namespace {
 
-constexpr const char *CACHE_HTTPFS_EXTENSION = "cache_httpfs";
+constexpr std::string_view CACHE_HTTPFS_EXTENSION = "cache_httpfs";
 
 void LoadInternal(ExtensionLoader &loader) {
 	LoadCacheHttpfsExtensionIfNeeded(loader);
@@ -21,7 +23,7 @@ void LoadInternal(ExtensionLoader &loader) {
 
 void LoadCacheHttpfsExtensionIfNeeded(ExtensionLoader &loader) {
 	auto &db_instance = loader.GetDatabaseInstance();
-	if (db_instance.GetExtensionManager().ExtensionIsLoaded(CACHE_HTTPFS_EXTENSION)) {
+	if (db_instance.GetExtensionManager().ExtensionIsLoaded(string(CACHE_HTTPFS_EXTENSION))) {
 		return;
 	}
 
@@ -31,7 +33,7 @@ void LoadCacheHttpfsExtensionIfNeeded(ExtensionLoader &loader) {
 
 	// Register into extension manager to keep compatibility as httpfs.
 	auto &extension_manager = ExtensionManager::Get(db_instance);
-	auto extension_active_load = extension_manager.BeginLoad(CACHE_HTTPFS_EXTENSION);
+	auto extension_active_load = extension_manager.BeginLoad({string(CACHE_HTTPFS_EXTENSION)});
 	// Manually fill in the extension install info to finalize extension load.
 	ExtensionInstallInfo extension_install_info;
 	extension_install_info.mode = ExtensionInstallMode::UNKNOWN;

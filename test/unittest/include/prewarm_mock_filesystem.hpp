@@ -89,13 +89,13 @@ public:
 	string GetName() const override;
 
 private:
-	mutable mutex mu;
+	mutable annotated_mutex mu;
 
-	vector<OpenFileCall> open_file_calls;
-	vector<GlobCall> glob_calls;
-	vector<ReadCall> read_calls;
-	unordered_map<string, vector<string>> configured_glob_results;
-	unordered_map<string, idx_t> configured_file_sizes;
+	vector<OpenFileCall> open_file_calls DUCKDB_GUARDED_BY(mu);
+	vector<GlobCall> glob_calls DUCKDB_GUARDED_BY(mu);
+	vector<ReadCall> read_calls DUCKDB_GUARDED_BY(mu);
+	unordered_map<string, vector<string>> configured_glob_results DUCKDB_GUARDED_BY(mu);
+	unordered_map<string, idx_t> configured_file_sizes DUCKDB_GUARDED_BY(mu);
 };
 
 } // namespace duckdb

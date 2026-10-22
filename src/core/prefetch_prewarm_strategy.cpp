@@ -42,7 +42,7 @@ private:
 
 idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
                                        idx_t max_blocks) {
-	CheckDirectIO("PREFETCH");
+	CheckDirectIO(table_entry, "PREFETCH");
 
 	auto block_size = block_manager.GetBlockAllocSize();
 
@@ -72,7 +72,7 @@ idx_t PrefetchPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unorde
 	auto &storage_manager = StorageManager::Get(catalog);
 	string db_path = storage_manager.GetDBPath();
 
-	auto thread_count = std::max(1, TaskScheduler::GetScheduler(context).NumberOfThreads());
+	auto thread_count = std::max<idx_t>(1, TaskScheduler::GetScheduler(context).NumberOfThreads());
 	auto blocks_per_task = CalculateBlocksPerTask(block_size, total_blocks, thread_count, PREFETCH_CHUNK_SIZE);
 	if (blocks_per_task == 0) {
 		return 0;

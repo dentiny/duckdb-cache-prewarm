@@ -34,48 +34,18 @@ class Span;
 
 namespace span_internal {
 
-// Helper to get data pointer from containers
-template <typename C>
-constexpr auto GetDataImpl(C &c, char) noexcept -> decltype(c.data()) {
-	return c.data();
-}
-
-// Special case for std::string before C++17 (data() returns const char*)
-inline char *GetDataImpl(std::string &s, int) noexcept {
-	return &s[0];
-}
-
-template <typename C>
-constexpr auto GetData(C &c) noexcept -> decltype(GetDataImpl(c, 0)) {
-	return GetDataImpl(c, 0);
-}
-
-// Type traits helpers
-template <typename T>
-using remove_cv_t = typename std::remove_cv<T>::type;
-
-template <typename T>
-using decay_t = typename std::decay<T>::type;
-
-template <typename T>
-using remove_reference_t = typename std::remove_reference<T>::type;
-
-// C++14 void_t implementation for C++11 compatibility
-template <typename...>
-using void_t = void;
-
 // Detection idioms for size() and data()
 template <typename C>
-using HasSize = std::is_integral<decay_t<decltype(std::declval<C &>().size())>>;
+using HasSize = std::is_integral<std::decay_t<decltype(std::declval<C &>().size())>>;
 
 // Check if container has compatible data() method
 template <typename T, typename C>
-using HasData = std::is_convertible<decay_t<decltype(GetData(std::declval<C &>()))> *, T *const *>;
+using HasData = std::is_convertible<std::decay_t<decltype(std::data(std::declval<C &>()))> *, T *const *>;
 
 // Extract element type from container
 template <typename C>
 struct ElementType {
-	using type = typename remove_reference_t<C>::value_type;
+	using type = typename std::remove_reference_t<C>::value_type;
 };
 
 template <typename T, size_t N>
@@ -93,11 +63,12 @@ struct IsView {
 };
 
 template <typename T>
-struct IsView<T, void_t<decltype(GetData(std::declval<const T &>()))>, void_t<decltype(GetData(std::declval<T &>()))>> {
+struct IsView<T, std::void_t<decltype(std::data(std::declval<const T &>()))>,
+              std::void_t<decltype(std::data(std::declval<T &>()))>> {
 private:
-	using Container = typename std::remove_const<T>::type;
-	using ConstData = decltype(GetData(std::declval<const Container &>()));
-	using MutData = decltype(GetData(std::declval<Container &>()));
+	using Container = std::remove_const_t<T>;
+	using ConstData = decltype(std::data(std::declval<const Container &>()));
+	using MutData = decltype(std::data(std::declval<Container &>()));
 
 public:
 	static constexpr bool value = std::is_same<ConstData, MutData>::value;
@@ -105,13 +76,13 @@ public:
 
 // Enable if helpers
 template <typename T>
-using EnableIfIsView = typename std::enable_if<IsView<T>::value, int>::type;
+using EnableIfIsView = std::enable_if_t<IsView<T>::value, int>;
 
 template <typename T>
-using EnableIfNotIsView = typename std::enable_if<!IsView<T>::value, int>::type;
+using EnableIfNotIsView = std::enable_if_t<!IsView<T>::value, int>;
 
 template <typename From, typename To>
-using EnableIfConvertibleTo = typename std::enable_if<std::is_convertible<From, To>::value>::type;
+using EnableIfConvertibleTo = std::enable_if_t<std::is_convertible_v<From, To>>;
 
 // Comparison helpers
 template <template <typename> class SpanT, typename T>
@@ -151,7 +122,7 @@ private:
 
 public:
 	using element_type = T;
-	using value_type = span_internal::remove_cv_t<T>;
+	using value_type = std::remove_cv_t<T>;
 	using pointer = T *;
 	using const_pointer = const T *;
 	using reference = T &;
@@ -182,27 +153,27 @@ public:
 	template <typename V, typename = EnableIfConvertibleFrom<V>, typename = EnableIfValueIsMutable<V>,
 	          typename = span_internal::EnableIfNotIsView<V>>
 	explicit Span(V &v) noexcept // NOLINT(runtime/references)
-	    : Span(span_internal::GetData(v), v.size()) {
+	    : Span(std::data(v), v.size()) {
 	}
 
 	// Implicit constructor for const Span from container
 	template <typename V, typename = EnableIfConvertibleFrom<V>, typename = EnableIfValueIsConst<V>,
 	          typename = span_internal::EnableIfNotIsView<V>>
 	constexpr Span(const V &v) noexcept // NOLINT(google-explicit-constructor)
-	    : Span(span_internal::GetData(v), v.size()) {
+	    : Span(std::data(v), v.size()) {
 	}
 
 	// Overloads for view types (without lifetime annotations)
 	template <typename V, typename = EnableIfConvertibleFrom<V>, typename = EnableIfValueIsMutable<V>,
 	          span_internal::EnableIfIsView<V> = 0>
 	explicit Span(V &v) noexcept // NOLINT(runtime/references)
-	    : Span(span_internal::GetData(v), v.size()) {
+	    : Span(std::data(v), v.size()) {
 	}
 
 	template <typename V, typename = EnableIfConvertibleFrom<V>, typename = EnableIfValueIsConst<V>,
 	          span_internal::EnableIfIsView<V> = 0>
 	constexpr Span(const V &v) noexcept // NOLINT(google-explicit-constructor)
-	    : Span(span_internal::GetData(v), v.size()) {
+	    : Span(std::data(v), v.size()) {
 	}
 
 	// Implicit constructor from initializer_list (only for const T)
@@ -490,8 +461,8 @@ Span<T> MakeSpan(T *begin, T *end) noexcept {
 }
 
 template <typename C>
-constexpr auto MakeSpan(C &c) noexcept -> decltype(MakeSpan(span_internal::GetData(c), c.size())) {
-	return MakeSpan(span_internal::GetData(c), c.size());
+constexpr auto MakeSpan(C &c) noexcept -> decltype(MakeSpan(std::data(c), c.size())) {
+	return MakeSpan(std::data(c), c.size());
 }
 
 template <typename T, size_t N>

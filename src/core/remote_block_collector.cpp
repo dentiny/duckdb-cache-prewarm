@@ -25,18 +25,14 @@ RemoteFileBlockMap RemoteBlockCollector::CollectRemoteBlocks(FileSystem &fs, con
 			// TODO: add a debug logging that we skipped file
 			continue;
 		}
-		idx_t file_size = fs.GetFileSize(*file_handle);
+		idx_t file_size = file_handle->GetFileSize();
 		if (file_size == 0) {
 			// TODO: add a debug logging that we skipped file
 			continue;
 		}
 
 		// Divide file into blocks
-		const ReadRequestParams read_params {
-		    .requested_start_offset = 0,
-		    .requested_bytes_to_read = file_size,
-		    .block_size = block_size,
-		};
+		const ReadRequestParams read_params {0, file_size, block_size};
 		const ChunkAlignmentInfo alignment_info = CalculateChunkAlignment(read_params);
 		vector<RemoteBlockInfo> blocks;
 		blocks.reserve(alignment_info.subrequest_count);

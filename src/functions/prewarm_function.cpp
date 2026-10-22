@@ -7,14 +7,10 @@
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/common/exception.hpp"
-#include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/common/unordered_set.hpp"
 #include "duckdb/function/scalar_function.hpp"
-#include "duckdb/main/attached_database.hpp"
 #include "duckdb/main/client_context.hpp"
-#include "duckdb/main/database.hpp"
-#include "duckdb/main/database_manager.hpp"
 #include "duckdb/parser/qualified_name.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/storage/data_table.hpp"
@@ -84,23 +80,12 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 		}
 	}
 
-	string schema = qualified_name.schema.empty() ? "main" : qualified_name.schema;
-	string table_name = std::move(qualified_name.name);
-
-	// Resolve the database: use the catalog from the qualified name if specified, otherwise use the default database
-	auto &db_manager = DatabaseManager::Get(DatabaseInstance::GetDatabase(context));
-	string db_name =
-	    qualified_name.catalog == INVALID_CATALOG ? db_manager.GetDefaultDatabase(context) : qualified_name.catalog;
-	shared_ptr<AttachedDatabase> db = db_manager.GetDatabase(db_name);
-	if (!db) {
-		throw InvalidInputException("Database '%s' not found", db_name);
-	}
-	auto &catalog = db->GetCatalog();
-	auto &table_catalog_entry = catalog.GetEntry<TableCatalogEntry>(context, schema, table_name);
+	// Let the catalog resolve Identifier components, including the current search path.
+	auto &table_catalog_entry = Catalog::GetEntry<TableCatalogEntry>(context, qualified_name);
 	auto &duck_table = table_catalog_entry.Cast<DuckTableEntry>();
 
-	// Convert max_bytes to max_blocks using the block size
-	auto &block_manager = StorageManager::Get(*db).GetBlockManager();
+	// Convert max_bytes to max_blocks using the table's storage manager.
+	auto &block_manager = StorageManager::Get(duck_table.ParentCatalog()).GetBlockManager();
 	idx_t block_size = block_manager.GetBlockAllocSize();
 	idx_t max_blocks = NumericLimits<idx_t>::Maximum();
 	if (has_size_limit) {
@@ -113,8 +98,8 @@ static void PrewarmFunction(DataChunk &args, ExpressionState &state, Vector &res
 	// Execute prewarm using the appropriate strategy
 	idx_t bytes_prewarmed = 0;
 	if (!block_ids.empty()) {
-		auto strategy = CreateLocalPrewarmStrategy(context, mode, StorageManager::Get(*db).GetBlockManager(),
-		                                           BufferManager::GetBufferManager(context));
+		auto strategy =
+		    CreateLocalPrewarmStrategy(context, mode, block_manager, BufferManager::GetBufferManager(context));
 		bytes_prewarmed = strategy->Execute(duck_table, block_ids, max_blocks);
 	}
 

@@ -296,13 +296,8 @@ TEST_CASE("RemotePrewarmStrategy - Execute with Capacity Limit (Mock)", "[remote
 	const idx_t capacity_limit = 3;
 
 	// Configure capacity limit
-	BufferCapacityInfo capacity {
-	    .block_size = block_size,
-	    .max_capacity = capacity_limit * block_size,
-	    .used_space = 0,
-	    .available_space = capacity_limit * block_size,
-	    .max_blocks = capacity_limit,
-	};
+	BufferCapacityInfo capacity {block_size, capacity_limit * block_size, 0, capacity_limit * block_size,
+	                             capacity_limit};
 	strategy.ConfigureCapacity(capacity);
 
 	// Configure mock filesystem

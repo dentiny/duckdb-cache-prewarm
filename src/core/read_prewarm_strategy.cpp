@@ -30,8 +30,8 @@ public:
 		try {
 			auto block_size = block_manager.GetBlockAllocSize();
 			auto total_size = block_count * block_size;
-			auto temp_buffer = buffer_manager.Allocate(MemoryTag::BASE_TABLE, total_size, true);
-			block_manager.ReadBlocks(temp_buffer.GetFileBuffer(), first_block_id, block_count);
+			auto temp_buffer = buffer_manager.Allocate(context, MemoryTag::BASE_TABLE, total_size, true);
+			block_manager.ReadBlocks(context, temp_buffer.GetFileBuffer(), first_block_id, block_count);
 			blocks_read += block_count;
 		} catch (const IOException &e) {
 			// TODO: the SingleFileBlockManager::ReadBlock sometimes throws file out-of-bounds exception, we have to do
@@ -59,7 +59,7 @@ private:
 
 idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_set<block_id_t> &block_ids,
                                    idx_t max_blocks) {
-	CheckDirectIO("READ");
+	CheckDirectIO(table_entry, "READ");
 
 	auto unloaded_handles = GetUnloadedBlockHandles(block_ids);
 	if (unloaded_handles.empty()) {
@@ -97,7 +97,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 	    unloaded_handles.begin(), unloaded_handles.end(),
 	    [](const shared_ptr<BlockHandle> &a, const shared_ptr<BlockHandle> &b) { return a->BlockId() < b->BlockId(); });
 
-	auto thread_count = std::max(1, TaskScheduler::GetScheduler(context).NumberOfThreads());
+	auto thread_count = std::max<idx_t>(1, TaskScheduler::GetScheduler(context).NumberOfThreads());
 	auto blocks_per_task = CalculateBlocksPerTask(block_size, max_batch_size, thread_count, READ_PREFETCH_TARGET_BYTES);
 	if (blocks_per_task == 0) {
 		return 0;
@@ -113,7 +113,7 @@ idx_t ReadPrewarmStrategy::Execute(DuckTableEntry &table_entry, const unordered_
 
 		// Find consecutive blocks and limit the batch size to prevent memory overflow
 		while (i + block_count < unloaded_handles.size() &&
-		       unloaded_handles[i + block_count]->BlockId() == first_block_id + block_count &&
+		       unloaded_handles[i + block_count]->BlockId() == first_block_id + static_cast<block_id_t>(block_count) &&
 		       block_count < max_batch_size) {
 			block_count++;
 		}

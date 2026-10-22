@@ -68,7 +68,7 @@ public:
 protected:
 	//! Check if direct I/O is enabled and throw an exception if OS page cache strategies won't work
 	//! @param strategy_name The name of the strategy for error messaging
-	void CheckDirectIO(const string &strategy_name);
+	void CheckDirectIO(DuckTableEntry &table_entry, const string &strategy_name);
 
 	//! Register blocks and filter to unloaded ones
 	//! @param block_ids The set of block IDs to register
