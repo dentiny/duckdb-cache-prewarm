@@ -1,5 +1,10 @@
 # 0.3.0
 
+## Fixed
+
+- Include storage, catalog, and logging definitions explicitly for DuckDB v2 builds.
+- Preserve unlimited size limits using DuckDB's `ParseMemoryLimitOrMaximum` API.
+
 ## Changed
 
 - Upgrade DuckDB to `v2.0.0`, extension-ci-tools to the latest commit, and embedded cache_httpfs to `0.15.0` with its matching httpfs sources.

@@ -1,6 +1,9 @@
 #include "core/prewarm_strategy.hpp"
 
 #include "duckdb/common/exception.hpp"
+#include "duckdb/catalog/catalog.hpp"
+#include "duckdb/storage/block_manager.hpp"
+#include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/main/attached_database.hpp"
 #include "duckdb/storage/buffer/block_handle.hpp"

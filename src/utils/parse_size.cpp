@@ -14,9 +14,9 @@ idx_t ParseSizeLimit(const string &input) {
 		}
 	}
 	if (is_numeric) {
-		return DBConfig::ParseMemoryLimit(input + "bytes");
+		return DBConfig::ParseMemoryLimitOrMaximum(input + "bytes");
 	}
-	return DBConfig::ParseMemoryLimit(input);
+	return DBConfig::ParseMemoryLimitOrMaximum(input);
 }
 
 } // namespace duckdb
