@@ -2,6 +2,8 @@
 #include "core/os_prefetch.hpp"
 
 #include "duckdb/common/atomic.hpp"
+#include "duckdb/logging/logger.hpp"
+#include "duckdb/storage/block_manager.hpp"
 #include "duckdb/parallel/task_executor.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/storage/storage_info.hpp"

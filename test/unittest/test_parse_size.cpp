@@ -1,4 +1,5 @@
 #include "catch/catch.hpp"
+#include "duckdb/common/limits.hpp"
 
 #include "utils/include/parse_size.hpp"
 
@@ -56,6 +57,12 @@ TEST_CASE("ParseSizeLimit - invalid values", "[ParseSize]") {
 	REQUIRE_THROWS(ParseSizeLimit(""));
 	REQUIRE_THROWS(ParseSizeLimit("abc"));
 	REQUIRE_THROWS(ParseSizeLimit("mb"));
+}
+
+TEST_CASE("ParseSizeLimit - unlimited values", "[ParseSize]") {
+	REQUIRE(ParseSizeLimit("none") == NumericLimits<idx_t>::Maximum());
+	REQUIRE(ParseSizeLimit("null") == NumericLimits<idx_t>::Maximum());
+	REQUIRE(ParseSizeLimit("-1") == NumericLimits<idx_t>::Maximum());
 }
 
 } // namespace

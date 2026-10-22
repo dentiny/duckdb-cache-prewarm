@@ -1,6 +1,7 @@
 #include "core/block_collector.hpp"
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
 #include "duckdb/storage/storage_info.hpp"
+#include "duckdb/storage/table_storage_info.hpp"
 
 namespace duckdb {
 
