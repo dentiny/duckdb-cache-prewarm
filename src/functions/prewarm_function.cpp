@@ -16,6 +16,8 @@
 #include "duckdb/storage/data_table.hpp"
 #include "duckdb/storage/storage_manager.hpp"
 
+#include <string_view>
+
 namespace duckdb {
 
 //===--------------------------------------------------------------------===//
@@ -24,19 +26,23 @@ namespace duckdb {
 
 namespace {
 
+constexpr std::string_view PREFETCH_MODE = "prefetch";
+constexpr std::string_view READ_MODE = "read";
+constexpr std::string_view BUFFER_MODE = "buffer";
+
 //! Parse prewarm mode from value
 PrewarmMode ParsePrewarmMode(const Value &mode_val) {
 	if (mode_val.IsNull()) {
 		return PrewarmMode::BUFFER;
 	}
 	auto lower_mode = StringUtil::Lower(mode_val.ToString());
-	if (lower_mode == "prefetch") {
+	if (lower_mode == PREFETCH_MODE) {
 		return PrewarmMode::PREFETCH;
 	}
-	if (lower_mode == "read") {
+	if (lower_mode == READ_MODE) {
 		return PrewarmMode::READ;
 	}
-	if (lower_mode == "buffer") {
+	if (lower_mode == BUFFER_MODE) {
 		return PrewarmMode::BUFFER;
 	}
 	throw InvalidInputException("Invalid prewarm mode '%s'. Valid modes are: 'prefetch', 'read', 'buffer'",
