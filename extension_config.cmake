@@ -3,7 +3,7 @@
 
 # Extension from this repo
 duckdb_extension_load(cache_prewarm SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}
-                      EXTENSION_VERSION 0.3.0 LOAD_TESTS)
+                      EXTENSION_VERSION 0.3.1 LOAD_TESTS)
 duckdb_extension_statically_link(cache_prewarm)
 
 # Any extra extensions that should be built e.g.: duckdb_extension_load(json)
