@@ -3,6 +3,7 @@
 ### Changed
 
 - Upgrade DuckDB to `v2.0.1`.
+- Update embedded cache_httpfs to `0.15.1`, built on DuckDB `v2.0.1`.
 
 # 0.3.0
 
