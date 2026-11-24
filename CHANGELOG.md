@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+- Use the cache_httpfs dependency fix that aligns its bundled httpfs with DuckDB v2.0.1.
+
 ## 0.3.1 - 2026-11-23
 
 ### Changed
